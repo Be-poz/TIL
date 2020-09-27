@@ -1,9 +1,7 @@
-WHY HATEOAS??
----
+#WHY HATEOAS??
 
 
-what is RESTful API?
-*** 
+## what is RESTful API?
 
 * /employees/3 은 REST 가 아니다.
 * 단순히, `GET`, `POST`,etc 또한 REST 가 아니다.
@@ -17,11 +15,9 @@ REST 창시자 Roy Fielding은 다음과 같이 말했다.
 `If the engine of application state (and hence the API) is not being driven by hyper text,  
 then it cannot be RESTful and cannot be a REST API`  
 출처 : https://roy.gbiv.com/untangled/2008/rest-apis-must-be-hypertext-driven  
+***  
 
-  
-  
-ABOUT HATEOAS
-***
+##ABOUT HATEOAS
 
 HATEOAS는 'Hypermedia As The Engine Of Application State'의 약자이다.  
 
