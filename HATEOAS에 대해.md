@@ -130,7 +130,7 @@ Realation이 "aa" 로 나타나게 된다. Link.of("url","rel") 를 통해서 �
 표현해 줄 수도 있다.  
 
 **eventResource.add(linkTo(클래스).withRel(rel));**  
-해당 클래스의 RequestMapping url을 넣고 Relation을 설정해준다.
+해당 클래스의 RequestMapping url을 넣고 Relation을 설정해준다.  
 `import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;` 해준것이고, WebMvcLinkBuilder 소속이다.
 해당 문법 또한 withSelfRel()를 통해 "self"를 표현해 줄 수가 있다.  
 위의 Link.of 와 달리 withRel() or withSelfRel()를 꼭 기입해주어야 한다.  
@@ -144,7 +144,9 @@ EventResource 클래스의 생성자를 보면 생성을 하면서 "self" relati
 
 @JsonUnwrapped는 다음과 같은 상황에 사용된다.  
 ![capture1](https://user-images.githubusercontent.com/45073750/94361298-251ff580-00ee-11eb-9883-b9cbe5297ca7.PNG)
-![capture2](https://user-images.githubusercontent.com/45073750/94361300-26e9b900-00ee-11eb-9419-f573750705c7.PNG)
+![capture2](https://user-images.githubusercontent.com/45073750/94361300-26e9b900-00ee-11eb-9419-f573750705c7.PNG)  
+
+
 위는 사용하지 않은 상황이고 밑은 사용한 경우이다.  
 Event 객체에서 Unwrap 해준다.  
 물론 EventResource 클래스의 필드를 Event 객체가 아니라 Event 객체 내부의 필드를 다 풀어서 사용해줄 수도 있지만 상당히 번거로운 일인데,  
