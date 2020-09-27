@@ -151,6 +151,11 @@ EventResource 클래스의 생성자를 보면 생성을 하면서 "self" relati
 Event 객체에서 Unwrap 해준다.  
 물론 EventResource 클래스의 필드를 Event 객체가 아니라 Event 객체 내부의 필드를 다 풀어서 사용해줄 수도 있지만 상당히 번거로운 일인데,  
 @JsonUnwrapped 를 통해서 간단하게 해결해 줄수도 있다. 이 방법이 아닌 CollectionModel를 상속받아 하는 방법도 있지만 생략하겠다.  
+
+위의 코드의 결과로 다음과 링크가 리턴이 된다.  
+![capture3](https://user-images.githubusercontent.com/45073750/94363653-a97a7480-00fe-11eb-9b3a-2b9f108c8fe5.PNG)  
+
+
 ***
 
 HATEOAS 1.0.2 버전 이후  
