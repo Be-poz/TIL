@@ -1,4 +1,5 @@
-#WHY HATEOAS??
+WHY HATEOAS??
+==================
 
 
 ## what is RESTful API?
