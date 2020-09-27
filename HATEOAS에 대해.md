@@ -165,7 +165,7 @@ HATEOAS 1.0.2 버전 이후
 
 ***
 
-`참고 링크`
+`참고 링크`  
 https://en.wikipedia.org/wiki/HATEOAS 
 https://spring.io/guides/gs/rest-hateoas/  
 https://docs.spring.io/spring-hateoas/docs/1.1.2.RELEASE/reference/html/  
