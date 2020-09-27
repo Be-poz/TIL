@@ -1,5 +1,4 @@
-WHY HATEOAS??
-==================
+# WHY HATEOAS??
 
 
 ## what is RESTful API?
@@ -19,7 +18,7 @@ REST 창시자 Roy Fielding은 다음과 같이 말했다.
 출처 : https://roy.gbiv.com/untangled/2008/rest-apis-must-be-hypertext-driven  
 ***  
 
-##ABOUT HATEOAS
+## ABOUT HATEOAS
 
 HATEOAS는 'Hypermedia As The Engine Of Application State'의 약자이다.  
 
