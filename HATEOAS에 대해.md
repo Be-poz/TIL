@@ -15,6 +15,7 @@ WHY HATEOAS??
 REST 창시자 Roy Fielding은 다음과 같이 말했다.  
 >If the engine of application state (and hence the API) is not being driven by hyper text,  
 >then it cannot be RESTful and cannot be a REST API  
+
 출처 : https://roy.gbiv.com/untangled/2008/rest-apis-must-be-hypertext-driven  
 ***  
 
