@@ -4,7 +4,7 @@
 
 
 
-ObjectMapper(다양한 Serializer를 가지고 있음)가 자바 빈 스펙을 따르는 객체의 경우에 Bean Serializer를 이용해서 변환해주기 때문이다.
+ObjectMapper(다양한 Serializer를 가지고 있음)가 자바 빈 스펙을 따르는 객체의 경우에 Bean Serializer를 이용해서 변환해주기 때문이다.  
 하지만 **Errors 객체는 예외이다.**  
 Errors는 자바 빈 스펙을 준수하지 않기 때문에 ObjectMapper에서 Bean Serializer를 통해 Serialization이 불가능하다.
 
