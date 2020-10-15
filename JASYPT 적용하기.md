@@ -1,4 +1,4 @@
-#JASYPT 적용하기
+# JASYPT 적용하기
 
 JASYPT는 'Java Simplified Encryption'의 약어이다.  
 개발자가 암호화 작동 방식에 대한 깊은 지식 없이도 최소한의 노력으로 프로젝트에 기본 암호화 기능을 추가할 수 있는 JAVA 라이브러리이다.  
