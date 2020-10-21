@@ -1,0 +1,432 @@
+# Spring 빈 스코프
+본 내용은 김영한 님의 스프링 핵심 원리 강의 내용을 토대로 정리했습니다.  
+
+빈 스코프란 빈이 존재할 수 있는 범위를 뜻한다.  
+지난번에 싱글턴 컨테이너에 대해 정리를 했었는데, 그때의 빈은 스프링 컨테이너의 시작 때에 생성되어 종료될 때 까지 유지됐었다.  
+[Spring 싱글턴 컨테이너](https://github.com/Be-poz/TIL/blob/master/Spring%20%EC%8B%B1%EA%B8%80%ED%84%B4%20%EC%BB%A8%ED%85%8C%EC%9D%B4%EB%84%88.md)  
+
+스프링은 **싱글턴, 프로토타입, request, session, application**과 같은 다양한 스코프를 지원한다.  
+빈 스코프는 다음과 같이 지정할 수 있다.  
+```java
+//컴포넌트 스캔 자동 등록의 경우
+@Scope("prototype")
+@Component
+public class HelloBean{}
+
+//수동 등록의 경우
+@Scope("prototype")
+@Bean
+PrototypeBean HelloBean(){
+  return new HelloBean();
+}
+```
+싱글턴의 경우 ``@Scope``에서 default로 가지고 있다. 싱글턴은 현재까지 계속 사용한 빈 스코프이므로, 프로토타입부터 살펴보겠다.  
+***
+## 프로토타입 스코프
+
+싱글턴 스코프의 빈을 조회하면 스프링 컨테이너는 항상 같은 인스턴스의 스프링 빈을 반환하였다. 이것이 곧 싱글턴이었기도 했고 말이다.  
+반면에 프로토타입 스코프는 스프링 컨테이너에 조회하면 항상 새로운 인스턴스를 생성해서 반환해준다.  
+
+1. 프로토타입 스코프의 빈을 스프링 컨테이너에 요청한다.
+2. 스프링 컨테이너는 **이 시점**에 프로토타입 빈을 생성하고, 필요한 의존관계를 주입한다.
+3. 스프링 컨테이너는 생성한 프로토타입 빈을 클라이언트에 반환한다.
+4. 이후에 스프링 컨테이너에 같은 요청이 오면 항상 새로운 프로토타입 빈을 생성해서 반환한다.  
+
+**스프링 컨테이너는 프로토타입 빈을 생성하고, 의존관계를 주입, 초기화 까지만 처리한다.**  
+이후 해당 빈은 스프링 컨테이너에서 관리하지 않게되므로, ``@PreDestroy``와 같은 종료 메서드가 호출되지 않는다.  
+프로토타입 빈을 관리할 책임은 해당 빈을 받은 클라이언트에 있게된다.  
+
+```java
+    @Test
+    void singletonBeanFind() {
+        AnnotationConfigApplicationContext ac = new AnnotationConfigApplicationContext(SingletonBean.class);
+        System.out.println("find singletonBean1");
+        SingletonBean singletonBean1 = ac.getBean(SingletonBean.class);
+        System.out.println("find singletonBean2");
+        SingletonBean singletonBean2 = ac.getBean(SingletonBean.class);
+        System.out.println("singletonBean1 = " + singletonBean1);
+        System.out.println("singletonBean2 = " + singletonBean2);
+        assertThat(singletonBean1).isSameAs(singletonBean2);
+        ac.close();
+    }
+
+    @Scope("singleton")
+    static class SingletonBean{
+        @PostConstruct
+        public void init(){
+            System.out.println("SingletonBean.init");
+        }
+
+        @PreDestroy
+        public void destroy(){
+            System.out.println("SingletonBean.destroy");
+        }
+    }
+```
+다음의 테스트 코드에서는 싱글턴 스코프를 가지고 수행하였다.  
+init() 메서드가 빈 등록 후 호출이 되므로, "find singletonBean1"/"find singletonBean2" 를 print 하기 전에 호출이 된다.  
+
+```java
+    @Test
+    void prototypeBeanFind() {
+        AnnotationConfigApplicationContext ac = new AnnotationConfigApplicationContext(PrototypeBean.class);
+        System.out.println("find prototypeBean1");
+        PrototypeBean prototypeBean1 = ac.getBean(PrototypeBean.class);
+        System.out.println("find prototypeBean2");
+        PrototypeBean prototypeBean2 = ac.getBean(PrototypeBean.class);
+        System.out.println("prototypeBean1 = " + prototypeBean1);
+        System.out.println("prototypeBean2 = " + prototypeBean2);
+        assertThat(prototypeBean1).isNotSameAs(prototypeBean2);
+        ac.close();
+
+        prototypeBean1.destroy();
+    }
+
+    @Scope("prototype")
+    static class PrototypeBean{
+        @PostConstruct
+        public void init(){
+            System.out.println("PrototypeBean.init");
+        }
+
+        @PreDestroy
+        public void destroy(){
+            System.out.println("PrototypeBean.destroy");
+        }
+    }
+``` 
+다음은 프로토타입 스코프를 가지고 수행한 테스트이다.  
+싱글턴 빈은 스프링 컨테이너 생성 시점에 초기화 메서드가 실행되는 반면, 프로토타입 스코프의 빈은 스프링 컨테이너에서 빈을 조회할 때 생성되고,  
+초기화 메서드도 실행된다. 프로토타입 빈을 2회 조회했으므로 초기화도 2번이 실행되었다.  
+```
+find prototypeBean1
+PrototypeBean.init
+find prototypeBean2
+PrototypeBean.init
+prototypeBean1 = hello.core.scope.PrototypeTest$PrototypeBean@6ee4d9ab
+prototypeBean2 = hello.core.scope.PrototypeTest$PrototypeBean@5a5338df
+17:56:58.837 [main] DEBUG org.springframework.context.annotation.AnnotationConfigApplicationContext - Closing org.springframework.context.annotation.AnnotationConfigApplicationContext@cad498c, started on Wed Oct 21 17:56:58 KST 2020
+PrototypeBean.destroy
+```
+결과 값이 다음과 같이 나오게 되는데, "find prototypeBean1"을 먼저 출력한 후, init() 메서드가 호출이 된 것을 알 수가 있다.  
+스프링 컨테이너에 요청하는 시점에 생성이 되는 것이다.  
+그리고 ac.close() 때에 destroy메서드가 호출된 것이 아니라 해당 빈을 destroy()할 때 호출이 된다. 스프링 컨테이너의 손을 벗어났기 때문이다.  
+***
+문제는 싱글턴 스코프와 프로토타입 스코프를 같이 사용할 때에 발생하게된다.  
+
+```java
+    @Test
+    void prototypeFind() {
+        AnnotationConfigApplicationContext ac = new AnnotationConfigApplicationContext(PrototypeBean.class);
+        PrototypeBean prototypeBean = ac.getBean(PrototypeBean.class);
+        prototypeBean.addCount();
+        assertThat(prototypeBean.getCount()).isEqualTo(1);
+
+        PrototypeBean prototypeBean2 = ac.getBean(PrototypeBean.class);
+        prototypeBean2.addCount();
+        assertThat(prototypeBean2.getCount()).isEqualTo(1);
+    }
+
+    @Scope("prototype")
+    static class PrototypeBean{
+        private int count = 0;
+
+        public void addCount(){
+            count++;
+        }
+
+        public int getCount() {
+            return count;
+        }
+
+        @PostConstruct
+        public void init() {
+            System.out.println("PrototypeBean.init "+this);
+        }
+
+        @PreDestroy
+        public void destroy() {
+            System.out.println("PrototypeBean.destroy");
+        }
+    }
+```
+두 클라이언트가 프로토타입 스코프의 빈을 호출을 해서 addCount()를 해주고 그 count를 확인하면 그 값은 둘 다 1일 것이다.  
+왜냐하면 프로토타입 스코프이기 때문에 서로 다른 인스턴스이니깐.  
+
+```java
+    @Test
+    void singletonClientUserPrototype() {
+        AnnotationConfigApplicationContext ac =
+                new AnnotationConfigApplicationContext(ClientBean.class, PrototypeBean.class);
+        ClientBean clientBean1 = ac.getBean(ClientBean.class);
+        int count1 = clientBean1.logic();
+        assertThat(count1).isEqualTo(1);
+
+        ClientBean clientBean2 = ac.getBean(ClientBean.class);
+        int count2 = clientBean2.logic();
+        assertThat(count2).isEqualTo(1);
+
+    }
+
+    @Scope("singleton")
+    static class ClientBean{
+        private final PrototypeBean prototypeBean;
+
+        @Autowired
+        public ClientBean(PrototypeBean prototypeBean) {
+            this.prototypeBean = prototypeBean;
+        }
+
+        public int logic() {
+            prototypeBean.addCount();
+            return prototypeBean.getCount();
+        }
+    }
+``` 
+그런데 이 경우를 한 번 봐보자.  
+싱글턴 스코프인 ClientBean에서 프로토타입 스코프인 PrototypeBean을 주입 받고 각 클라이언트가 ClientBean을 요청하여 logic()을 실행한다.  
+ClientBean은 싱글턴이기 때문에 두 클라이언트가 받은 인스턴스는 같다. 문제는, 해당 인스턴스 안에 프로토타입으로 받은 PrototypeBean의  
+참조 값이 같다는 것이다. 해당 참조 값을 가진 녀석이 싱글턴 스코프이기 때문이다! 따라서 위의 테스트 코드는 깨지게 된다.  
+
+그렇다면, 싱글턴 빈과 프로토타입 빈을 함께 사용할 때 항상 새로운 프로토타입 빈을 생성을 해야하는데 어떻게 해야하는 것인지 보자  
+
+```java
+    @Scope("singleton")
+    static class ClientBean{
+        @Autowired
+        private ApplicationContext ac;
+
+        public int logic() {
+            PrototypeBean prototypeBean = ac.getBean(PrototypeBean.class);
+            prototypeBean.addCount();
+            return prototypeBean.getCount();
+        }
+    }
+```
+가장 간단한 방법은 싱글턴 빈이 프로토타입을 사용할 때 마다 스프링 컨테이너에 새롭게 요청하는 것이다.  
+의존관계를 외부에서 주입(DI) 받는게 아니라 이렇게 직접 필요한 의존관계를 찾는 것을 Dependency Lookup(DL) 의존관계 조회(탐색)이라고 한다.  
+하지만 이렇게 스프링의 ApplicationContext 전체를 주입받게 되면, 스프링 컨테이너에 종속적인 코드가 되고, 단위 테스트가 어려워진다.  
+지정한 프로토타입 빈을 컨테이너에서 대신 찾아주는 DL의 기능만 제공하는 것이 필요하게 되는데...  
+
+```java
+    @Scope("singleton")
+    static class ClientBean{
+
+        @Autowired
+        private ObjectProvider<PrototypeBean> prototypeBeanProvider;
+
+        public int logic() {
+            PrototypeBean prototypeBean = prototypeBeanProvider.getObject();
+            prototypeBean.addCount();
+            return prototypeBean.getCount();
+        }
+    }
+```
+스프링 내에서 DL 서비스를 제공하는 ``ObjectProvider``가 있다. (자동으로 빈 등록해주기 때문에 주입이 가능하다)  
+ObjectProvider의 ``getObject()`` 메서드를 호출하게 되면 스프링 컨테이너를 통해 해당 빈을 찾아서 반환하게 된다.(DL)  
+**스프링이 제공하고, 기능이 단순해서 단위테스트나 mock 코드 제작에 용이해진다. 별도의 라이브러리가 필요없고 스프링에 의존하게 된다.**  
+
+또 다른 방법이 있다.  
+```java
+    @Scope("singleton")
+    static class ClientBean{
+
+        @Autowired
+        private Provider<PrototypeBean> prototypeBeanProvider;
+
+        public int logic() {
+            PrototypeBean prototypeBean = prototypeBeanProvider.get();
+            prototypeBean.addCount();
+            return prototypeBean.getCount();
+        }
+    }
+```
+이것은 ``javax.inject.Provider``라는 ``JSR-330``자바 표준을 따르는 방법이다.  
+이 방법을 사용하기 위해서는 ``implementation 'javax.inject:javax.inject:1'``라이브러리를 gradle에 추가해주어야 한다.  
+
+ObjectProvider와는 다르게 ``.get()``을 통해 가지고 온다.  
+**자바 표준이므로 스프링이 아닌 다른 컨테이너에서도 사용할 수 있다는 장점이 있지만 별도의 라이브러리가 필요하다는 단점이 있다.**  
+
+둘 중 어떤 방법을 택할지는 상황마다 다를 것이다. 프로토타입 빈은 매번 사용할 때 마다 의존관계 주입이 완료된 새로운 객체가 필요할 때 사용한다.  
+***
+## 웹 스코프
+
+웹 스코프는 웹 환경에서만 동작한다. 프로토타입과는 다르게 스프링이 해당 스코프의 종료시점까지 관리한다. 따라서 종료 메서드가 호출된다.  
+
+웹 스코프의 종류
+* request: HTTP 요청 하나가 들어오고 나갈 때 까지 유지되는 스코프, 각각의 HTTP 요청마다 별도의 빈 인스턴스가 생성되고, 관리된다.  
+* session: HTTP Session과 동일한 생명주기를 가지는 스코프  
+* application: 서블릿 컨텍스트와 동일한 생명주기를 가지는 스코프  
+* websocket: 웹 소켓과 동일한 생명주기를 가지는 스코프  
+
+여기서는 request를 설명하겠다. 나머지도 범위만 다르고 동작 방식은 비슷하다.  
+
+request 스코프는 HTTPrequest가 들어오면 해당 request가 종료될 때 까지 존재하게 된다.  
+``spring-boot-starter-web``이 있어야 하므로 build.gradle에 추가해야한다.  
+
+```java
+@Component
+@Scope(value = "request")   //value 생략 가능
+public class MyLogger {
+    private String uuid;
+    private String requestURL;
+
+    public void setRequestURL(String requestURL) {
+        this.requestURL = requestURL;
+    }
+
+    public void log(String msg){
+        System.out.println("["+uuid+"]["+requestURL+"]"+msg);
+    }
+
+    @PostConstruct
+    public void init() {
+        uuid = UUID.randomUUID().toString();
+        System.out.println("["+uuid+"] request scope bean create:"+this);
+    }
+
+    @PreDestroy
+    public void close() {
+        System.out.println("["+uuid+"] request scope bean close:"+this);
+    }
+}
+```
+``@Scope(value = "request")``를 통해 request 스코프를 지정해주었다. **HTTP요청 당 하나씩 생성되고,** HTTP요청이 끝날 때 소멸된다.  
+``@PostConstruct``에서 uuid를 생성해서 저장했다. 
+```java
+@Controller
+@RequiredArgsConstructor
+public class LogDemoController {
+    private final LogDemoService logDemoService;
+    private final MyLogger myLogger;
+
+    @RequestMapping("log-demo")
+    @ResponseBody
+    public String logDemo(HttpServletRequest request) {
+        String requestURL = request.getRequestURL().toString();
+        myLogger.setRequestURL(requestURL);
+
+        myLogger.log("controller test");
+        logDemoService.logic("testId");
+        return "OK";
+    }
+
+}
+
+@Service
+@RequiredArgsConstructor
+public class LogDemoService {
+    private final MyLogger myLogger;
+    public void logic(String id) {
+        myLogger.log("service id = " + id);
+    }
+}
+```
+서비스와 컨트롤러이다. 사실 컨트롤러의 requestURL을 MyLogger에 저장하는 부분은 인터셉터나 서블릿 필터를 활용하는 것이 좋다.  
+서비스에서 request scope이 아닌 파라미터로 모든 정보를 넘겼다면, 파라미터가 많아서 지저분해졌을 것이다. 그리고 requestURL 같은 웹과 관련된 정보가
+웹과 관련없는 서비스 계층까지 넘어가게 되므로 좋지 않은 설계가 됐을 것이다. 해당 부분은 컨트롤러에서만 사용하는 것이 유지보수 관점에서 좋다.  
+
+해당 코드를 실행하면 오류가 난다.  
+왜? 그것은 바로 MyLogger를 주입하는 과정에서 아직 request 요청이 일어나지 않았는데 싱글턴 처럼 빈 주입을 하려했기 때문이다.  
+request 스코프를 가진다는 것이 오류의 원인이었다. 그렇다면 이것을 해결해보자.  
+
+### Provider 이용
+앞에서 배운 Provider를 이용해서 해결할 수가 있다.  
+```java
+@Controller
+@RequiredArgsConstructor
+public class LogDemoController {
+    private final LogDemoService logDemoService;
+    private final ObjectProvider<MyLogger> myLoggerProvider;
+    @RequestMapping("log-demo")
+    @ResponseBody
+    public String logDemo(HttpServletRequest request) throws InterruptedException {
+        String requestURL = request.getRequestURL().toString();
+        MyLogger myLogger = myLoggerProvider.getObject();
+
+        System.out.println("myLogger = "+myLogger.getClass());
+        myLogger.setRequestURL(requestURL);
+
+        myLogger.log("controller test");
+        logDemoService.logic("testId");
+        return "OK";
+    }
+}
+
+@Service
+@RequiredArgsConstructor
+public class LogDemoService {
+    private final ObjectProvider<MyLogger> myLoggerProvider;
+    public void logic(String id) {
+        MyLogger myLogger = myLoggerProvider.getObject();
+        myLogger.log("service id = " + id);
+    }
+}
+```
+다음과 같이 provider를 이용하면 오류 없이 동작한다. 결과값 또한 정상적으로 출력이 된다.  
+```$xslt
+[8f2edfbc-cfcf-472b-bf71-5e61c0e828e9] request scope bean create:hello.core.common.MyLogger@71835459
+[8f2edfbc-cfcf-472b-bf71-5e61c0e828e9][http://localhost:8080/log-demo]controller test
+[8f2edfbc-cfcf-472b-bf71-5e61c0e828e9][http://localhost:8080/log-demo]service id = testId
+[8f2edfbc-cfcf-472b-bf71-5e61c0e828e9] request scope bean close:hello.core.common.MyLogger@71835459
+```
+``ObjectProvider``덕에 ``.getObject()``를 호출하는 시점까지 request scope 빈의 **생성을 지연**할 수 있다.  
+그리고 ``.getObject()``를 호출하는 시점에서는 HTTP 요청이 진행중이므로 정상적으로 request 스코프의 빈이 처리된다.  
+컨트롤러와 서비스에서 각각 따로 호출해도 같은 HTTP 요청이므로 동일한 빈이 반환이 된다.  
+
+### 프록시 이용
+
+두 번째 방법으로는 프록시를 이용하는 방법이 있다.  
+그저 ``@Scope(value = "request",proxyMode = ScopedProxyMode.TARGET_CLASS)``다음과 같이 기입해주면 된다.  
+적용 대상이 인터페이스면 ``TARGET_CLASS`` 대신 ``INTERFACES``를 선택해주면 된다.  
+해당 방식을 사용하면 MyLogger의 가짜 프록시 클래스를 만들어두고 HTTP request와 상관 없이 가짜 프록시 클래스를 다른 빈에 미리 주입할 수 있다.  
+
+```java
+@Controller
+@RequiredArgsConstructor
+public class LogDemoController {
+    private final LogDemoService logDemoService;
+    private final MyLogger myLogger;
+    @RequestMapping("log-demo")
+    @ResponseBody
+    public String logDemo(HttpServletRequest request) throws InterruptedException {
+        String requestURL = request.getRequestURL().toString();
+
+        System.out.println("myLogger = "+myLogger.getClass());
+        myLogger.setRequestURL(requestURL);
+
+        myLogger.log("controller test");
+        logDemoService.logic("testId");
+        return "OK";
+    }
+}
+
+@Service
+@RequiredArgsConstructor
+public class LogDemoService {
+    private final MyLogger myLogger;
+    public void logic(String id) {
+        myLogger.log("service id = " + id);
+    }
+}
+```
+이제 처음에 오류났던 컨트롤러와 서비스코드가 오류없이 동작하게된다.  
+``System.out.println("myLogger = "+myLogger.getClass());`` 에서 찍혀지는 값을 보면  
+``myLogger = class hello.core.common.MyLogger$$EnhancerBySpringCGLIB$$fe044699``다음과 같이 나오게 된다.  
+이거는 예전에 ``@Configuration``에서 본적이 있다. CGLIB이라는 것이 섞인 클래스 정보말이다. 싱글턴 보장을 해줄 때에 쓰였었다.  
+
+* CGLIB라는 바이트코드를 조작하는 라이브러리로 MyLogger를 상속받은 가짜 프록시 객체를 생성한다.  
+* 그리고 스프링 컨테이너에 이 프록시를 등록하고 의존관계 주입도 프록시에 주입된다.  
+* 가짜 프록시 객체는 요청이 오면 그때 내부에서 진짜 빈을 요청하는 위임 로직을 실행시킨다.  
+* 클라이언트가 ``myLogger.logic()``을 호출하면 사실은 가짜 프록시 객체의 메서드를 호출한 것이다.  
+* 가짜 프록시 객체는 request 스코프의 진짜 ``myLogger.logic()``을 호출한다.  
+* 해당 프록시는 원본 클래스를 상속 받아서 만들어졌기 때문에 이 객체를 사용하는 클라이언트 입장에서는 원본인지 아닌지 모르게 사용가능하다.  
+* 가짜 프록시 객체는 실제 request 스코프와는 관계가 없고, 내부에 단순한 위임 로직만 있고 싱글턴처럼 동작한다.(실제 동작은 다름)
+
+* Provider를 사용하든, 프록시를 사용하든 진짜 객체 조회를 꼭 필요한 시점까지 지연처리 한다는 것이 포인트이다.  
+* 웹 스코프가 아니어도 프록시 사용은 가능하다.
+
+* 싱글턴을 사용하는 것 같지만 다르게 동작하기에 주의해야 한다.
+* 무분별하게 사용하면 유지보수가 어려워진다.
+
+***
