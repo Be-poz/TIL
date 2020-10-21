@@ -1,5 +1,5 @@
 # Spring 싱글턴 컨테이너
-해당 내용은 김영한 님의 스프링 핵심 원리 강의 내용을 토대로 정리했습니다.  
+본 내용은 김영한 님의 스프링 핵심 원리 강의 내용을 토대로 정리했습니다.  
 
 빈을 등록한 DI컨테이너(AppConfig)가 있다.  
 클라이언트 A가 memberService를 요청하면 new memberService를 해서 return 해준다.  
