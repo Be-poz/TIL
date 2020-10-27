@@ -141,7 +141,7 @@ public class ComponentFilterAppConfigTest {
 
 FilterType에는 5가지 옵션이 있다.  
 * ANNOTATION: 기본값, 어노테이션을 인색해서 동작한다.  
-* ASSIGNABLE_TYPE: 지정한 타입과 짓ㄱ 타입을 인식해서 동작한다.
+* ASSIGNABLE_TYPE: 지정한 타입과 자식 타입을 인식해서 동작한다.
 * ASPECTJ: AspectJ 패턴을 사용한다.
 * REGEX: 정규 표현식
 * CUSTOM: ``TypeFilter``라는 인터페이스를 구현해서 처리한다.
