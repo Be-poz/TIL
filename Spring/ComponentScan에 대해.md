@@ -16,31 +16,11 @@ public class AutoAppConfig {
 기존의 코드는 다음과 같았다.  
 ```java
 @Configuration
-public class AppConfig {
-
-    @Bean
-    public MemberService memberService(){
-        System.out.println("AppConfig.memberService");
-        return new MemberServiceImpl(memberRepository());
-    }
-
-    @Bean
-    public OrderService orderService() {
-        System.out.println("AppConfig.orderService");
-        return new OrderServiceImpl(memberRepository(), discountPolicy());
-    }
-
-    @Bean
-    public MemberRepository memberRepository() {
-        System.out.println("AppConfig.memberRepository");
-        return new MemoryMemberRepository();
-    }
-
-    @Bean
-    public DiscountPolicy discountPolicy() {
-//      return new FixedDiscountPolicy();
-        return new RateDiscountPolicy();
-    }
+@ComponentScan(
+        //@Configuration 내부에 Component가 있음. 우리는 Configuration 에서 Bean 으로 등록해줬기 때문에 충돌할 수 있으므로 filter로 뺐다.
+        excludeFilters = @ComponentScan.Filter(type = FilterType.ANNOTATION, classes = Configuration.class)
+)
+public class AutoAppConfig {
 }
 ```
 AutoAppConfig를 보면 ``@Bean``으로 등록한 클래스가 없는 것을 알 수 있을 것이다.  
