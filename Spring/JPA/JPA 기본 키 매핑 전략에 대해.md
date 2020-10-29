@@ -87,4 +87,14 @@ SEQUENCE 전략은 em.persist() 가 호출이 되면 먼저 데이터베이스 �
 
 TABLE 전략은 키 생성 전용 테이블을 만들고 여기에 이름과 값으로 사용할 컬럼을 만들어서 데이터베이스 시퀀스를 흉내내는 전략인데, 잘 사용하지 않으므로 생략하겠다.  
 
+
+
+
+
+#### AUTO 전략
+
+AUTO 전략은 데이터베이스 방언에 따라 IDENTITY, SEQUENCE, TABLE 전략 중 하나를 자동으로 선택한다. 예로 들면 오라클은 SEQUENCE를, MYSQL은 IDENTITY를 사용하게 된다.  
+
+``@GeneratedValue``의 기본값이 AUTO다.  
+
 ***
