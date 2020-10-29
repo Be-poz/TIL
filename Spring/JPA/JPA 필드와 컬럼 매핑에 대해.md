@@ -1,5 +1,7 @@
 #  JPA 필드와 컬럼 매핑에 대해
 
+본 내용은 자바 ORM 표준 JPA 프로그래밍 책을 토대로 정리했습니다.  
+
 필드와 컬림 패잉용 어노테이션은 다음과 같이 있다.  
 
 ``@Column, @Enumerated, @Temporal, @Lob, @Transient, @Access`` 이것들을 간단히 살펴보자.  
