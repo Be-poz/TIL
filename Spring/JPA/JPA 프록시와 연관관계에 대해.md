@@ -106,7 +106,22 @@ System.out.println(refMember == findMember);
 
 이 경우는 어떨까?? 처음에 프록시 객체가 있고, 이후에 진짜 엔티티를 가지고 올 것이다. 그렇다면 false 값이 나올텐데, JPA는 true를 보장해주어야 한다. 놀랍게도 findMember도 프록시를 반환한다. 그 결과 true를 반환하게 된다.  
 
-그러니깐, **em.find() 를 사용해도 프록시가 나올 수 있다는 것이다.** 우리는 개발을 할 때에 어차피 해당 객체가 프록시 객체인지 모르고, 알 필요도 없다.  
+그러니깐, **em.find() 를 사용해도 프록시가 나올 수 있다는 것이다.** 우리는 개발을 할 때에 어차피 해당 객체가 프록시 객체인지 모르고, 알 필요도 없다.  이 부분에서 재밌는 점이 하나 있다.  
+
+```java
+Member refMember = em.getReference(Member.class, member.getId());
+refMember.getUsername();
+```
+
+이 상황에서는 프록시는 getUsername 호출 시에 초기화를 하게된다.  
+
+```java
+Member refMember = em.getReference(Member.class, member.getId());
+Member realMember = em.find(Member.class, member.getId());
+refMember.getUsername();
+```
+
+프록시가 먼저 생성되고 실제 엔티티를 find 하려 들 때에 JPA 는 true를 보장해야 하기 때문에 이 경우에도 프록시를 반환해준다고 하였다. 사실 정확히는 refMember에는 프록시가 들어가고 realMember는 저 상황에서 실제 엔티티를 가져오지만 프록시를 반환해주는 것이다. 그대신 그 과정에서 내부에서 프록시를 한 번 초기화를 해준다. 따라서 위의 코드와는 다르게 밑의 코드는 getUsername 호출 시에 강제초기화를 할 필요가 없으므로 DB에 접근해서 SELECT문을 실행하지 않는다. realMember에서 이미 한 번 DB에 접근해서 초기화를 시켜주었기 때문이다.  
 
 * 영속성 컨텍스트의 도움을 받을 수 없는 준영속 상태일 때, 프록시를 초기화하면 문제가 발생한다.
 
