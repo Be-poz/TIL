@@ -9,20 +9,20 @@
 
 ``JpaRepository`` 인터페이스에는 다음과 같이 존재한다.  
 
-* findAll() : List<T>
-* findAll(Sort) : List<T>
-* findAll(Iterable<ID>) : List<T>
-* save(Iterable<S>) : List<S>
+* findAll() : List T
+* findAll(Sort) : List T
+* findAll(Iterable ID) : List T
+* save(Iterable S) : List S
 * flush()
 * saveAndFlush(T) : T
-* deleteInBatch(Iterable<T>)
+* deleteInBatch(Iterable T)
 * deleteAllInBatch()
 * getOne(ID) : T
 
 이 ``JpaRepository``는 ``PagingAndSortingRepository``인터페이스를 상속받는다. 여기에는  다음을 포함하고 있다.  
 
-* findAll(Sort) : Iterable<T>
-* findAll(Pageable) : Page<T>
+* findAll(Sort) : Iterable T
+* findAll(Pageable) : Page T
 
 그리고 이 인터페이스는 ``CrudRepository`` 인터페이스를 상속받는다.  
 
