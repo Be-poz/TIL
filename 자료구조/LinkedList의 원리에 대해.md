@@ -1,4 +1,4 @@
-# LinkedList에 대해
+# LinkedList의 원리에 대해
 
 LinkedList(연결 리스트)는 노드로 이루어진 선형의 자료구조이다. 
 
