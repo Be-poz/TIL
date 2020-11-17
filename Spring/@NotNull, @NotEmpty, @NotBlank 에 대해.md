@@ -2,6 +2,8 @@
 
 ``import javax.validation.constraints`` 에 들어가있는 세 어노테이션에 대해 알아보겠다.  
 
+
+
 ***
 
 ### @NotNull
@@ -46,7 +48,11 @@ public void validationTest() throws Exception{
 
 > ConstraintViolationImpl{interpolatedMessage='널이어서는 안됩니다', propertyPath=value, rootBeanClass=class com.helloasean.manage.domain.dto.BoardDto, messageTemplate='{javax.validation.constraints.NotNull.message}'}
 
-String 뿐만 아니라 int, long 등등 다 검사가 가능하다. int 로 두고 set 해주지 않았을 때에 기본값이 0이니깐 통과가 되지만 primitive type 이 아닌 Integer 를 사용하고 set 해주지 않으면 null 이 들어가 걸리게 된다.  CharSequence, Collection, Map, Array를 넣을 수 있다. 
+String 뿐만 아니라 int, long 등등 다 검사가 가능하다. int 로 두고 set 해주지 않았을 때에 기본값이 0이니깐 통과가 되지만 primitive type 이 아닌 Integer 를 사용하고 set 해주지 않으면 null 이 들어가 걸리게 된다.  CharSequence, Collection, Map, Array를 넣을 수 있다.  
+
+
+
+ 
 
 ***
 
@@ -77,12 +83,29 @@ public void validationTest() throws Exception{
 }
 ```
 
-``@NotEmpty`` 는 ``@NotNull``의 valid 를 implementation 하면서 추가로 해당 오브젝트의 size/length 를 검사해서 0 보다 큰지를 확인한다. 이 곳에  ``@NotNull`` 때와 같이 int, long, Integer 등을 넣으면 다음과 같은 에러가 나온다. 
+``@NotEmpty`` 는 ``@NotNull``의 valid 를 implementation 하면서 추가로 해당 오브젝트의 size/length 를 검사해서 0 보다 큰지를 확인한다.  
+
+```java
+	@Override
+	public boolean isValid(int[] array, ConstraintValidatorContext constraintValidatorContext) {
+		if ( array == null ) {
+			return false;
+		}
+		return array.length > 0;
+	}
+// int[] array 말고 정말 많은 종류의 파라미터 형태가 정의되어 있다.
+```
+
+이 곳에  ``@NotNull`` 때와 같이 int, long, Integer 등을 넣으면 다음과 같은 에러가 나온다. 
 
 > No validator could be found for constraint 'javax.validation.constraints.NotEmpty' validating type 'java.lang.Integer'. Check configuration for 'value'
 
 ``@NotEmpty``는 내부구현 처럼 해당 size/length 를 검사할 수 있는 타입이 들어가게 된다.  
 CharSequence, Collection, Map, Array를 넣을 수 있다. 
+
+
+
+
 
 ***
 
@@ -145,6 +168,10 @@ public class NotBlankValidator implements ConstraintValidator<NotBlank, CharSequ
 ```
 
 ``@NotBlank``는 String 만 받을 수가 있다.  
+
+
+
+
 
 ***
 
