@@ -226,3 +226,7 @@ public static void main(String[] args) {
 참조타입을 불변 객체로 사용하고 싶을 때에는 항상 오늘 배운 것을 유의하고 사용하자!!  
 
 ***
+
+Reference  
+
+https://velog.io/@conatuseus/Java-Immutable-Object%EB%B6%88%EB%B3%80%EA%B0%9D%EC%B2%B4
