@@ -52,3 +52,11 @@ str 와 str2는 ``String Constant Pool``에서 같은 참조 값을 가지고 �
 불변 객체에 대한 개념이 흐릿하다면! [Immutable Object(불변 객체) 에 대해](https://github.com/Be-poz/TIL/blob/master/Java/Immutable%20Object%20(%EB%B6%88%EB%B3%80%20%EA%B0%9D%EC%B2%B4)%20%EC%97%90%20%EB%8C%80%ED%95%B4.md)
 
 ***
+
+Reference  
+
+https://madplay.github.io/post/java-string-literal-vs-string-object  
+
+https://velog.io/@ditt/Java-String-literal-vs-new-String  
+
+https://www.journaldev.com/797/what-is-java-string-pool
