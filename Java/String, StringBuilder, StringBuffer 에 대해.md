@@ -13,6 +13,10 @@ System.out.println(str);	// "ab"
 이럴 때에 사용하는 것이 **StringBuilder, StringBuffer** 이다.  
 이 둘은 가변성을 가지기 때문에 동일 메모리에서 문자열 변경이 가능하다.  
 
+![stringbuffer_and_string](https://user-images.githubusercontent.com/45073750/101247143-d2506300-375a-11eb-8dd8-17852b25e515.jpg)  
+
+다음과 같이 말이다.
+
 ```java
         StringBuilder sb = new StringBuilder();
         sb.append("abc");
