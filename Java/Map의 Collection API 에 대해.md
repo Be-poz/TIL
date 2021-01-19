@@ -35,8 +35,6 @@ HashMap은 자바를 사용하다보면 필연적으로 많이 사용하게 되�
 
 <br/>
 
-<br/>
-
 ## putIfAbsent
 
 ```java
@@ -65,8 +63,6 @@ HashMap은 자바를 사용하다보면 필연적으로 많이 사용하게 되�
 ```
 
 만약에 해당 key 값이 없다면 value를 집어 넣어준다.  
-
-<br/>
 
 <br/>
 
@@ -113,8 +109,6 @@ HashMap은 자바를 사용하다보면 필연적으로 많이 사용하게 되�
 
 <br/>
 
-<br/>
-
 ## computeIfAbsent
 
 ```java
@@ -135,14 +129,14 @@ HashMap은 자바를 사용하다보면 필연적으로 많이 사용하게 되�
 ```
 
 ```java
-        Map<Integer, Integer> map = new HashMap<>();
-        map.put(1, 1);
-        map.put(2, 2);
-        map.computeIfAbsent(3, (key) -> key + 5);
-        System.out.println(map.get(3));
+        Map<Integer, Integer> map = new HashMap<>(Map.ofEntries(entry(1, 1), entry(2, 2), entry(3, 3)));
+        System.out.println(map.computeIfAbsent(4, key -> key + 2));	//6
+        System.out.println(map.computeIfAbsent(3, key -> key + 2));	//3
+        System.out.println(map.get(4));								//6
 ```
 
 만약 해당 key 값이 존재하지 않는다면 key를 파라미터로 하여 mappingFunction을 수행한 후에 map에 put 해준다.  
+이때, 해당 값을 반환해준다. 만약 존재한다면 기존의 value를 반환해준다. 이것은 puteAbsent도 마찬가지다.  
 
 이 방법은 다음과 같은 상황일 때 쓰일 수 있을 것이다.  
 
@@ -166,10 +160,6 @@ HashMap은 자바를 사용하다보면 필연적으로 많이 사용하게 되�
         return n + 5;
     }
 ```
-
-
-
-<br/>
 
 <br/>
 
@@ -196,14 +186,15 @@ HashMap은 자바를 사용하다보면 필연적으로 많이 사용하게 되�
 ```
 
 ```java
-        Map<Integer, Integer> map = new HashMap<>();
-        map.put(1, 1);
-        map.put(2, 2);
-        map.computeIfPresent(2, (key, value) -> key + value + 3);
-        System.out.println(map.get(2));
+        Map<Integer, Integer> map = 
+            new HashMap<>(Map.ofEntries(entry(1, 1), entry(2, 2), entry(3, 3)));
+        System.out.println(map.computeIfPresent(2, (key, value) -> key + value + 1));	//5
+        System.out.println(map.computeIfPresent(4, (key, value) -> key + value + 1));	//null
+		System.out.println(map.get(2))													//5
 ```
 
-해당 key 값이 존재하는 경우에 remappingFunction을 수행해준다.  
+해당 key 값이 존재하는 경우에 key와 value를 인수로 하여 remappingFunction을 수행해준다.  
+key 값이 존재하여 함수가 진행되었을 때에 해당 결과 값을 반환해준다. 만약 해당 key가 존재 하지않는다면 null을 반환한다.
 
 이 방법은 다음과 같을 때에 쓰일 수 있을 것이다.  
 
@@ -221,8 +212,6 @@ HashMap은 자바를 사용하다보면 필연적으로 많이 사용하게 되�
 ```
 
 ``containsKey``로 확인하여 ``get`` 후에 연산을 하는 것이 ``computeIfPresent ``로 깔끔하게 해결되었다.  
-
-<br/>
 
 <br/>
 
@@ -249,8 +238,6 @@ HashMap은 자바를 사용하다보면 필연적으로 많이 사용하게 되�
 ``computeIfAbsent``는 2라는 key 값의 존재 유무를 먼저 확인하고 없을 시에 메서드가 실행이 된다.  
 
 ``map.putIfAbsent(2, 2)``, ``map.computeIfAbsent(2, key -> 2)`` 이 경우에는 전혀 상관이 없을 것이다.  
-
-<br/>
 
 <br/>
 
