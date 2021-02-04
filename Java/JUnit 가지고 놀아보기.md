@@ -1,4 +1,4 @@
-### JUnit 가지고 놀아보기
+# JUnit 가지고 놀아보기
 
 ```java
         String[] strings = "1,2".split(",");
