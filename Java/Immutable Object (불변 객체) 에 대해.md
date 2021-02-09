@@ -35,9 +35,9 @@ class Ex{
 
 ***
 
-#### 참조 타입의 불변 객체  
+### 참조 타입의 불변 객체  
 
-##### 일반 객체일 경우
+#### 일반 객체일 경우
 
 ```java
 public class Animal{
@@ -93,7 +93,7 @@ class Age{
 
 <br>
 
-##### 배열일 경우
+#### 배열일 경우
 
 ```java
 public class ArrayObj{
@@ -123,7 +123,7 @@ public class ArrayObj{
 
 <br>
 
-##### List일 경우
+#### List일 경우
 
 ```java
 public class ListObj{
@@ -231,7 +231,7 @@ public static void main(String[] args) {
 
 ***
 
-#### String 은 불변 객체 이다.
+### String 은 불변 객체 이다.
 
 String 은 불변 객체이다.  
 
