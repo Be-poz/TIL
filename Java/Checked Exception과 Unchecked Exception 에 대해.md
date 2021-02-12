@@ -1,4 +1,4 @@
-# Checked Exception와 Unchecked Exception 에 대해
+# Checked Exception과 Unchecked Exception 에 대해
 
 ![exceptionImage](https://user-images.githubusercontent.com/45073750/107757999-a0b2d400-6d69-11eb-91a5-f93b7ab9b265.PNG)
 
