@@ -1,3 +1,5 @@
+# LinkedHashMap의 원리에 대해
+
 ## HashMap을 순차적으로 읽으면 어떤 순서로 읽는가 ?
 
 이 글은 [이곳](https://sabarada.tistory.com/120?category=826240) 의 글을 그대로 가져온 글입니다.
