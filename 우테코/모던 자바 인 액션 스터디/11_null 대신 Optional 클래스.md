@@ -112,3 +112,26 @@ Optional<String> name = optInsurance.map(Insurance::getName);
 기본형 Optional은 성능 개선을 기대할 수 없고 map, flatMap, filter 등을 지원하지 않으므로 사용을 지양해야 한다.  
 
 ***
+
+### ``파즈``
+
+p.378 예제 11-6의 코드는 다음과 같다.
+
+```java
+public Set<String> getCarInsuranceNames(List<Person> persons) {
+  return persons.stream()
+   .map(Person::getCar)
+   .map(optCar -> optCar.flatMap(Car::getInsurance))
+   .map(optIns -> optIns.map(Insurance::getName))
+   .flatMap(Optional::stream)
+   .collect(toSet());
+}
+```
+
+위 코드에서 `.flatMap(Optional::stream)`을 `.map(Optional::get)`으로 사용하여도 동일한 반환타입을 얻을 수 있다.
+그런데 왜 굳이 Optional에 stream() 메서드를 자바 9에 들어서 추가한 것일까? 어떤 이점이 있길레??  
+
+### 답안
+
+p.379의 코드를 축약한 것이  `Optional::stream `이라고 생각하면 편하다. (정확한 내부구현은 차이가 당연히 있다.) isPresent로 내부의 값이 존재 여부에 대한 검사를 해준다. 만약 위 코드에 나와있는 `List<Person> persons` 에 null 값이 들어있다면 `Optional::stream` 은 해당 값을 거르고 수행하 게 되지만, `.map(Optional::Get)` 을 사용하게되면 NPE가 발생하게 된다.  
+
