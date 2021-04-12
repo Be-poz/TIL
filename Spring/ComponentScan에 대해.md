@@ -3,17 +3,10 @@
 
 스프링 빈을 등록할 때에 ``@Bean``을 사용해서 등록하고는 했다.  
 하지만 이런 빈이 수십, 수백개가 되면 문제가 생길 것이다. 그래서 설정 정보가 없어도 자동으로 스프링 빈을 등록하는 컴포넌트 스캔을 제공한다.  
-```java
-@Configuration
-@ComponentScan(
-        //@Configuration 내부에 Component가 있음. 우리는 Configuration 에서 Bean 으로 등록해줬기 때문에 충돌할 수 있으므로 filter로 뺐다.
-        excludeFilters = @ComponentScan.Filter(type = FilterType.ANNOTATION, classes = Configuration.class)
-)
-public class AutoAppConfig {
-}
-```
+
 사용하기 위해서는 ``@ConponentScan``을 붙여주면 된다.  
 기존의 코드는 다음과 같았다.  
+
 ```java
 @Configuration
 @ComponentScan(
@@ -135,4 +128,5 @@ FilterType에는 5가지 옵션이 있다.
 그때의 로그 ``Overriding bean definition for bean 'memoryMemberRepository' with a different definition: replacing``  
 
 스프링 부트에서는 수동 빈과 자동 빈 등록 시에 충돌이 발생할 경우 에러가 나게끔 해준다.
+
 ***
