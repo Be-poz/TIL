@@ -1,4 +1,4 @@
-# Spring 기초 정리
+# Spring MVC 기초 정리
 
 ### 매핑 요청
 
