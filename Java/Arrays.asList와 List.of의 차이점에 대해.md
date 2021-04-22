@@ -1,6 +1,6 @@
 # Arrays.asList와 List.of의 차이점에 대해
 
-Arrays.asList와 List.of 둘 다 고정된 크기의 리스트를 제공하기 떄무에 새 요소를 추가하거나 삭제하려고 하면 ``UnsupportedOperationException``이 발생한다. 그렇다면 둘의 차이점은 무엇일까 ??  
+Arrays.asList와 List.of 둘 다 고정된 크기의 리스트를 제공하기 때문에 새 요소를 추가하거나 삭제하려고 하면 ``UnsupportedOperationException``이 발생한다. 그렇다면 둘의 차이점은 무엇일까 ??  
 
 1. List.of 는 set으로 값 변경이 불가능하다.
 
