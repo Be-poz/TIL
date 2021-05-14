@@ -63,7 +63,7 @@ public Optional<Line> findLineByName(String name) {
 ```java
 public Line findLineByName(String name) {
   String sql = "select * from line where name = ?";
-  List<Line> lines = jdbcTemplate.queryForObject(sql, lineRowMapper(), "1호선");
+  List<Line> lines = jdbcTemplate.query(sql, lineRowMapper(), "1호선");
   Line line = DataAccessUtils.singleResult(lines);
   return line;
 }
