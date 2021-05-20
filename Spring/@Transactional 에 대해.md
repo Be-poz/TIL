@@ -70,7 +70,7 @@ mysql은 repeatable read이고, oracle은 read committed다.
 트랜잭션이 완료될 때까지 SELECT 문장이 사용하는 모든 데이터에 shared lock이 걸리므로 다른 사용자는 그 영역에 해당되는 데이터에 대한 수정이 불가능하다.  
 
 **SERIALIZABLE(level 3)**  
-트랜잭션이 완료될 때까지 SELECT 문장이 사용하는 모든 데이터에 shared lock이 걸리므로 다른 사용자는 그 영역에 해당되는 데이터에 대한 수정 및 입력이 불가능하다. Phantom REad를 방지한다. 격리 수준이 올라갈 수록 성능 저하의 우려가 있다.  
+트랜잭션이 완료될 때까지 SELECT 문장이 사용하는 모든 데이터에 shared lock이 걸리므로 다른 사용자는 그 영역에 해당되는 데이터에 대한 수정 및 입력이 불가능하다. Phantom Read를 방지한다. 격리 수준이 올라갈 수록 성능 저하의 우려가 있다.  
 
 ``@Transactional(isolation = Isolation.DEFAULT)``와 같이 사용한다.  
 
