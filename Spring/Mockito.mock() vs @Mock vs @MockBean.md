@@ -107,7 +107,7 @@ public class MockBeanAnnotationIntegrationTest {
 
 <br/>
 
-만약 통합 테스트라면 ``@MockBean``을 사용하면 될 것이고, 여타 다른 spring 빈들이 필요가 없고 특정 빈들만 mock으로 가지고 있으면 된다면 ``@Mock``을 이용한 테스트를 진행하면 될 것 같다.
+단순 mock 객체를 제공해주기 위한 것이 아니라 컨텍스트에 올려야 되는 상황이라면 ``@MockBean``을 사용하는 것이 옳다고 볼 수 있겠다.
 
 ***
 
