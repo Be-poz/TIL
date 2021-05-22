@@ -101,7 +101,7 @@ public class MockBeanAnnotationIntegrationTest {
 }
 ```
 
-해당 빈을 사용하기 위해서는 ``MockitoJUnitRunner``를 사용했던(코드 기준, Junit 버전 5 이상부터는``MockitoExtension``을 사용해야함) ``@Mock``와는 달리 ``SpringRunner``를 사용해야만 한다.(이것 또한 Junit 버전5 이상이라면 ``@ExtendWith(SpringExtension.class)``를 사용해야한다)  
+해당 빈을 사용하기 위해서는 ``MockitoJUnitRunner``를 사용했던(코드 기준, Junit 버전 5 이상부터는``MockitoExtension``을 사용해야함) ``@Mock``와는 달리 ``SpringRunner``를 사용해야 한다.(이것 또한 Junit 버전5 이상이라면 ``@ExtendWith(SpringExtension.class)``를 사용해야한다) . 또는 ``@WebMvcTest``같은 어노테이션을 선언하고 mock 객체를 추가해준다는 뜻으로 사용할 수 있다. 그러니깐 쉽게 말하자면 mock 객체로 만들어주기 위한 어노테이션이다.  
 
 이제 해당 어노테이션을 사용한 객체는 mock으로 객체된 것을 위의 검증하는 코드를 보면 확인할 수 있다.  
 
