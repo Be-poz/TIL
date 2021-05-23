@@ -151,6 +151,27 @@ public class YamlPropertySourceFactory implements PropertySourceFactory {
 
 위와 같이 말이다.  
 
+```java
+@ExtendWith(SpringExtension.class)
+@TestPropertySource("classpath:application.yml")
+public class PropertySourceTest {
+
+    @Autowired
+    Environment env;
+
+    @Test
+    @DisplayName("asdf")
+    public void asdf() {
+        String sec = env.getProperty("security-jwt-token-expire-length");
+        System.out.println(sec);
+        assertThat(sec).isEqualTo("3600000");
+    }
+}
+```
+
+``@TestPropertySource``의 경우에는 yml 파일을 읽어들일 수 있는 것을 확인하였다.  
+test 패키지 안의 resources 패키지를 먼저 확인하고 그 이후에 프로덕션 resources 패키지를 확인하고 있었다.  
+
 ***
 
 ### Reference
