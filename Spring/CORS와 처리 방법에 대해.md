@@ -27,7 +27,7 @@ public class WebConfig implements WebMvcConfigurer {
 
 ``addMapping``은 CORS를 적용할(Response 헤더에 달아줌) URL 패턴을 정의하는 것이다.  
 ``allowedMethod``는 response의 메서드 요청을 설정해주는 것이다. 위의 코드에는 ``(*)``를 사용했으므로 모두 받아들이는 것이지만 내가 어떻게 설정하느냐에 따라 get은 되고, post는 안되게 할 수 있을 것이다. (eg. ``allowedMethod("GET")``)  
-allowedOriginPatterns``는 허용 origin을 정해주는 것이다.(Response 헤더에 ``Access-Control-Allow-Origin : ...``을 붙임) 위의 경우에서 나는 프론트 서버 포트를 8081, 백엔드 서버 포트를 8080으로 두었기 때문에 ``(*)``이 아닌 ``http://localhost:8081``로 둘 수 있을 것이다.  
+``allowedOriginPatterns``는 허용 origin을 정해주는 것이다.(Response 헤더에 ``Access-Control-Allow-Origin : ...``을 붙임) 위의 경우에서 나는 프론트 서버 포트를 8081, 백엔드 서버 포트를 8080으로 두었기 때문에 ``(*)``이 아닌 ``http://localhost:8081``로 둘 수 있을 것이다.  
 
 이외에도 특정 시간동안 ``preflight``를 캐싱해두기 위한 ``maxAge``설정 등을 할 수 있다.  
 
