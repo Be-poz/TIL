@@ -12,7 +12,7 @@ JASYPT는 'Java Simplified Encryption'의 약어이다.
 
 이 글은 해당 상황일 때를 기반으로 작성하였다.  
 
-`compile 'com.github.ulisesbocchio:jasypt-spring-boot-starter:3.0.3'`를 build.gradle에 추가해주자.  
+`compile 'com.github.ulisesbocchio:jasypt-spring-boot-starter:2.1.2'`를 build.gradle에 추가해주자.  
 
 ```java
 @Configuration
