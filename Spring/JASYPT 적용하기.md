@@ -59,4 +59,8 @@ setPassword는 안에 문자열을 넣어 정할 수도 있지만 중요한 정�
 시크릿 키 입력은 Intellij 기준 상단의 RUN > Edit Configurations 의 VM Option에  
 ``-Djasypt.encryptor.password=키`` 과 같이 입력하면 된다.  
 
+![image](https://user-images.githubusercontent.com/45073750/122531070-1a313a80-d05a-11eb-8363-73d3f4b2e454.png)
+
 Test코드를 실행할 때에 이것을 추가해야 된다는 번거로운 점이 있는게 단점이다.
+
+***
