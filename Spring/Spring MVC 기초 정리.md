@@ -347,7 +347,7 @@ public class HelloAdvice {
 }
 ```
 
-``@ControllerAdvice`` 는 모든 ``@Controller`` 에서 발생한 예외들을 잡아서 처리할 수 있게끔 하는 어노테이션이다.  
+``@ControllerAdvice`` 는 모든 ``@Controller`` 에서 적용될 수 있게끔 공통적인 글로벌 코드를 사용하기 위한 어노테이션이다. 위의 예제에서는 예외들을 잡아서 처리할 수 있게끔 하였다. 이것 외에도 대표적으로 ``@InitBinder``를 사용할 수 있다. 대표적인 좋은 예시는 해당 [링크](https://jojoldu.tistory.com/407)의 ``initDirectFieldAccess``를 선언하는 부분에서 볼 수 있다.  
 위 코드에서 볼 수 있듯이 ``HelloAdvice`` 라는 별도의 클래스를 만들고 ``@ControllerAdvice`` 를 붙여주고나니깐 외부의 Controller 에서 발생한 ``HelloException`` 을 ``@ExceptionHandler`` 를 통해 잡아준 것을 확인할 수가 있다.  
 
 ***
