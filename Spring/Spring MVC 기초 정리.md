@@ -356,5 +356,6 @@ public class HelloAdvice {
 
 https://docs.spring.io/spring-framework/docs/current/reference/html/web.html  
 
-https://mangkyu.tistory.com/72
+https://mangkyu.tistory.com/72  
 
+https://dzone.com/articles/global-exception-handling-with-controlleradvice
