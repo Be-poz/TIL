@@ -4,7 +4,7 @@
 ``@PersistenceUnit`` : 엔티티 매니저 팩토리(``EntityManagerFacotry``) 주입  
 
 ``@Transactional`` : 트랜잭션, 영속성 컨텍스트  
-  ``readonly = true`` : 데이터의 변경이 없는 읽기 전용 메서드에 사용, 영속성 컨텍스트를 플러시 하지 않으므로 약간의 성능이 향상된다. (읽기 전용에는 다 전용)  
+  ``readonly = true`` : 데이터의 변경이 없는 읽기 전용 메서드에 사용, 영속성 컨텍스트를 플러시 하지 않으므로 약간의 성능이 향상된다. (읽기 전용에는 다 전용)  그리고 select 시에 스냅샷을 저장하지 않는다. (@QueryHint의 readOnly도 걸린다는 뜻이다)
 
 ``@SpringBootTest`` : 스프링 부트 띄우고 테스트 한다.(이게 없으면 ``@Autowired`` 실패 한다)  
 
