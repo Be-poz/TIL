@@ -40,4 +40,4 @@ profile을 모듈처럼 사용하는 방법이다. profile에 대해서는 [이 
 
 ### REFERENCE
 
-[내 깃허브 TIL ㅎ](
+[내 깃허브 TIL ㅎ](https://github.com/Be-poz/TIL)
