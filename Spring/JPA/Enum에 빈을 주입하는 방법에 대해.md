@@ -11,7 +11,7 @@ Enum에는 빈을 어떤식으로 주입할까?? 처음에는 다음과 같은 �
 결국 필드로만 갖게하고 생성자에는 넣지 않았다. 그렇다면 어떻게 이 값을 주입해주어야 할까?  
 그 방법은 바로 주입을 위한 클래스를 만들어주는 것이다. Enum 내부에 만들어줘도 되지만 나는 따로 클래스를 생성해주었다.  
 
-![image-20210709233324739](/Users/kangseungyoon/Library/Application Support/typora-user-images/image-20210709233324739.png)
+![image](https://user-images.githubusercontent.com/45073750/125156410-32e7c880-e1a0-11eb-8bd6-1babf65082d7.png)
 
 위와 같은 클래스를 정의해 주었다. Enum에서 공통의 빈을 사용한다면 필드도 하나만 주입받고 그것을 Enum에 set 해주면 되었을 것이지만, 나의 상황은 각기 다른 추상화 되어있는 빈 들을 주입해주어야 하기 때문에 위와 같은 방식을 취하게 되었다.  
 
