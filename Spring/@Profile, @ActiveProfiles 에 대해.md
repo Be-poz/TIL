@@ -59,7 +59,7 @@ spring:
 ![image](https://user-images.githubusercontent.com/45073750/128033281-3f5e24dc-70df-4204-a1cb-20c3fbd53a55.png)
 
 현재 진행중인 프로젝트에서는 다음과 같이 진행중이다. (secret은 서브모듈에서 들고옴)  
-![image-20210803233017629](/Users/kangseungyoon/Library/Application Support/typora-user-images/image-20210803233017629.png)
+![image](https://user-images.githubusercontent.com/45073750/128033910-370cd926-3e74-47b3-b75e-f8bbabb7d101.png)
 
 ``spring.profiles.include``를 통해 다른 yml 파일들의 내용을 가져와서 사용하는 방식이다.  
 
