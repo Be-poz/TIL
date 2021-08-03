@@ -49,10 +49,19 @@ spring:
 
 ![image](https://user-images.githubusercontent.com/45073750/119255626-c74d9a00-bbf7-11eb-86b4-9dded29bb683.png)
 
-이렇게 ``application-{profiles}.properties``로 파일명을 붙여서 구분해줄 수가 있다.  
+이렇게 ``application-{profiles}.properties``로 파일명을 붙여서 구분해줄 수가 있다.(yml도 가능)  
 이 상태로 그냥 돌리게 되면 어떤 ``profiles``를 사용해야할지 모르기 때문에 런타임 에러가 날 수 있다. 그래서 ``application.properties``를 추가한 후에 ``spring.profiles.active = local`` 를 추가해서 정해줘야 한다. 테스트 코드에서 ``@ActiveProfiles``를 사용한 경우에는 상관 없다.  
 
 또는 터미널에서 실행할 때 ``$ java -jar -Dspring.profiles.active=prod [jar파일명] `` 이렇게 활성화 시킬 ``profiles`` 값을 설정해서 돌릴 수 있다. 따라서 ``application.properties``에 ``local``로 잡아두고 배포를 하기 위해 터미널 작업을 할 때에 ``-Dspring.profiles.active=prod``를 사용해 ``prod`` ``profiles``를 사용하면 된다.  
+
++)  
+
+![image](https://user-images.githubusercontent.com/45073750/128033281-3f5e24dc-70df-4204-a1cb-20c3fbd53a55.png)
+
+현재 진행중인 프로젝트에서는 다음과 같이 진행중이다. (secret은 서브모듈에서 들고옴)  
+![image-20210803233017629](/Users/kangseungyoon/Library/Application Support/typora-user-images/image-20210803233017629.png)
+
+``spring.profiles.include``를 통해 다른 yml 파일들의 내용을 가져와서 사용하는 방식이다.  
 
 ***
 
