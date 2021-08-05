@@ -5,3 +5,9 @@ MySql 에서는 ``Group By`` 사용 시에 필드에 집계함수만을 사용�
 ``SET GLOBAL sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));``
 
 입력해주자.  
+
+***
+
+### REFERENCE
+
+https://stackoverflow.com/questions/23921117/disable-only-full-group-by
