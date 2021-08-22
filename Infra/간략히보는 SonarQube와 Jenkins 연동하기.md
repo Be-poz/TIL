@@ -49,12 +49,81 @@
 
    ![image](https://user-images.githubusercontent.com/45073750/128478455-91b8dedb-b825-4804-8c3e-55bbe4620049.png)
 
-8. 젠킨스 item 구성의 Build 탭에서 ``Execute SonarQube Scanner`` 를 등록해준다.  
+8. 자바 프로젝트에 Jacoco 설정을 해준다.  
+
+   ![image](https://user-images.githubusercontent.com/45073750/130346131-d19d58ab-d7e0-4439-b9d7-72b4b963e3e5.png)
+
+   ```gradle
+   jacocoTestReport {
+       dependsOn bootJar
+   
+       reports {
+           html.enabled true
+           xml.enabled true
+           csv.enabled false
+   
+           html.destination file("src/jacoco/jacoco.html")
+           xml.destination file("src/jacoco/jacoco.xml")
+       }
+   
+       afterEvaluate {
+           classDirectories.setFrom(files(classDirectories.files.collect {
+               fileTree(dir: it,
+                       exclude: [
+                               '**/TyfServerApplication*'
+                       ])
+           }))
+       }
+   
+       finalizedBy 'jacocoTestCoverageVerification'
+   }
+   
+   jacocoTestCoverageVerification {
+       violationRules {
+           rule {
+               enabled = true
+               element = 'CLASS'
+   
+               limit {
+                   counter = 'METHOD'
+                   value = 'COVEREDRATIO'
+                   minimum = 0.6
+               }
+   
+               excludes = [
+                       '**.*TyfServerApplication*'
+               ]
+           }
+       }
+   ```
+   
+   ``jacocoTestReport`` 에서 ``excludes`` 는 분석대상에서 제외하는 것,  
+   ``jacocoTestCoverageVerification`` 에서 ``excludes`` 는 테스트 대상에서 제외  
+   
+9. 젠킨스 item 구성의 Build 탭에서 ``Execute SonarQube Scanner`` 를 등록해준다.  
+
+   ![image](https://user-images.githubusercontent.com/45073750/130346164-fd84d89b-0792-4370-b81e-d9f9ab578863.png)
 
    ![image](https://user-images.githubusercontent.com/45073750/128463939-50c2ceac-85bd-4880-8e95-bed80c53854d.png)
 
-   ![image](https://user-images.githubusercontent.com/45073750/128479635-69e751ca-22ac-4e7b-936b-58db13142c0e.png)  
-   
+   ``Analysis properties`` 에는 다음과 같이 작성  
+
+   ```
+   sonar.login = {소나큐브에서 발급한 token}
+   sonar.projectKey = {소나큐브에서 설정한 key 이름}
+   sonar.projectName= {소나큐브에서 설정한 project 이름}
+   sonar.host.url = {소나큐브 url}
+   sonar.report.export.path = sonar-report.json
+   sonar.sources=server/src/main/java, server/src/main/resources
+   sonar.java.coveragePlugin = jacoco
+   sonar.coverage.jacoco.xmlReportPaths= server/src/jacoco/jacoco.xml (자코코 xml 생성 위치)
+   sonar.test.inclusions=**/*Test.java (include 할 클래스들)
+   sonar.exclusions=**/*TyfServerApplication.java, */Q*.java (exclude 할 클래스들)
+   sonar.projectVersion=1.0
+   sonar.sourceEncoding=UTF-8
+   sonar.java.binaries=server/build/classes
+   ```
+
    각 속성 값들에 대한 정보는 https://sonarqubekr.atlassian.net/wiki/spaces/SON/pages/388027 이곳에서 확인가능    
 
 ***
