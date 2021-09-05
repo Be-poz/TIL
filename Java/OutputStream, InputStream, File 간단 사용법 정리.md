@@ -26,7 +26,7 @@ OutputStream은 다른 매체에 바이트로 데이터를 쓸 때 사용한다.
 위 코드에서 사용한 ``write(byte[] data)`` 나 ``write(byte[] data, int off, int let)`` 을 이용하면 효율적으로 1바이트 이상을 한 번에 전송할 수 있다.  
 ``BufferedOutputStream`` 을 이용하면 버퍼링을 사용할 수 있다.  
 
-***
+<br/>
 
 ## InputStream
 
@@ -97,7 +97,7 @@ reader, writer를 사용하면 입출력 스트림을 바이트가 아닌 문자
 ``InputStreamReader`` 로 감싸주고 ``BufferedReader`` 로 다시 한 번 감싸준 것을 확인할 수가 있다.  
 ``\r\n`` 을 확인하고 잘라준다.  
 
-***
+<br/>
 
 ## File
 
