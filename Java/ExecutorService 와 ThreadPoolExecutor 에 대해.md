@@ -191,7 +191,7 @@ List<Runnable> runnables = service.shutdownNow();
 ``shutDown()`` 은 더 이상 task 들을 받지 않지만, 기존에 들어있는 작업들은 모두 끝마치고 종료된다.  
 ``shutDownNow()`` 는 곧장 종료된다. 아직 실행되지 않은 작업들에 대해서 List 형식으로 반환을 한다. 현재 실행중인 작업은 바로 끝마칠 수도 아니면 끝까지 돌아갈 수도 있다.  
 
-``ExecutorService`` 와 ``ThreadPoolExecutor` 에 대해 알아보았다.
+``ExecutorService`` 와 ``ThreadPoolExecutor`` 에 대해 알아보았다.
 
 ***
 
