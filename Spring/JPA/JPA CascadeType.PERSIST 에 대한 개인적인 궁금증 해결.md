@@ -294,4 +294,102 @@ public class Member {
 중간 테이블에서 생길 수 있는 주안점은 중간 테이블을 일대다로 가질 것인지 다대일로 가질 것인지에 대한 것이 있을 수 있겠다.  
 외래키를 한 테이블에서 관리할 것인지 각 양쪽 엔티티에서 따로 관리할 것인지에 대한 차이점인데, 일단 나는 한 곳에서 관리하는 것이 조금 더 낫지않나? 라고 생각해본다. 위의 리팩토링 과정에서도 느꼈지만, 연관 관계를 걸어주는 코드 또한 흩어지지 않고 캡슐화가 더 되는 느낌이기도 하고 유지보수적으로 조금 더 편할 것 같다고 생각한다. 개인적인 의견일 뿐이다.  
 
+<br/>
+
++)  그렇다면 이미 영속화 되어있는 엔티티한테 add 시키는 경우는 어떨까?? 기본코드는 위의 예시와 같게 진행했다.  
+
+```java
+@DataJpaTest
+class CascadeTest {
+
+    @Autowired
+    private EntityManager em;
+
+    /*
+    그렇다면 이미 영속화되어있는 Team한테 Member를 걸어주면 어떻게 될까 실험해봤습니다.
+     */
+    @Test
+    @DisplayName("Team에 Member 추가해두고 Team을 영속화 시키는 경우")
+    public void test1() {
+        Team team1 = new Team("team1");
+        Member member1 = new Member("member1");
+        team1.addMember(member1);
+
+        em.persist(team1);
+        assertThat(em.contains(team1)).isTrue();
+        assertThat(em.contains(member1)).isTrue();
+
+        em.flush();
+        em.clear();
+        Member member = em.find(Member.class, member1.getId());
+        assertThat(member).isNotNull();
+    }
+
+    @Test
+    @DisplayName("이미 영속화 되어있는 Member에 Team을 영속화 시키는 경우")
+    public void test2() {
+        Team team1 = new Team("team1");
+        Member member1 = new Member("member1");
+        em.persist(team1);
+
+        assertThat(em.contains(team1)).isTrue();
+        assertThat(em.contains(member1)).isFalse();
+
+        team1.addMember(member1);
+        assertThat(em.contains(member1)).isFalse();
+        //첫 번째 테스트와는 달리 이미 영속화되어있는 Team한테 Member를 걸어주어도 그 순간 바로 영속화시키지는 않았습니다.
+
+        em.flush();
+        em.clear();
+        //flush가 일어나면서 Member가 insert되었는데, 더티체킹이 일어난 것과 같았습니다. 그래서 이번에는 cascade PERSIST를 빼고 실험해보았습니다.
+        Member member = em.find(Member.class, member1.getId());
+        assertThat(member).isNotNull();
+    }
+
+
+    // Team의 Member필드에 있는 Cascade PERSIST를 끊고나서 실행하시면 됩니다.
+    @Test
+    @DisplayName("cascade Persist를 끊고 나서 이미 영속화 되어있는 Member에 Team을 영속화 시키는 경우")
+    public void test3() {
+        Team team1 = new Team("team1");
+        Member member1 = new Member("member1");
+        em.persist(team1);
+
+        assertThat(em.contains(team1)).isTrue();
+        assertThat(em.contains(member1)).isFalse();
+
+        team1.addMember(member1);
+        assertThat(em.contains(member1)).isFalse();
+
+        em.flush();
+        em.clear();
+        //더티체킹으로 추측되는 동작이 일어나지 않았습니다.
+        assertThat(member1.getId()).isNull();
+    }
+}
+```
+
+이미 영속화되어있는 엔티티에 추가해주는 경우에는 더티체킹 시에 일어나는 것을 확인했다.  
+
+그 이유를 의식의 흐름으로 한 번 정리해보았다.  
+
+```
+Team, Member로 예시, 기본키 전략 identity
+
+이미 영속화 되어있는 객체에 add 시키는 경우  
+더티체킹 시에 영속화시킴. 속성을 걸어두지 않으면 영속화 안함 이거는 당연.  
+
+그러면 왜 더티체킹 시에 영속화 하지?? -> 이미 영속화되어있다는 것은 db에 insert되었다는 뜻. 그런데 만약 더티체킹 방식이 아니라 바로 영속화 시킨다면? -> 영속화 되면서 insert를 하는데 이후에 remove되면 또 다시 remove 쿼리를 날려야함. 그러니깐 그냥 더티체킹으로 처리를 해버리는게 아닐까?  
+
+그렇다면 영속화 되어있지 않은 Team에 Member를 add 한 후에 Team을 영속화할 때에는 왜 바로 Member를 영속화하지? 이것도 Team만 넣고 나중에 Member를 더티체킹 식으로 하면안되나?  
+-> Team에는 이미 Member와의 연관관계가 묶여져 있음. Member가 Team의 List<Member> 필드안에 들어가 있다는 거임. 그 상태로 1차캐시에 넣을 때에 스냅샷을 찍기 때문에 더티체킹을 할 수가 없다.
+```
+
+프로젝트를 진행하면서 서비스 메서드에서 DB에서  Member를 찾고 Donation이라는 엔티티를 생성해준 후  
+member.addDonation(donation); 을 해준 후 Donation에 대한 정보를 return 해주는 작업을 하고 있었다.  
+
+cacade PERSIST를 걸어주었기 때문에 이상이 없다고 생각했으나 이 방식은 더티체킹 때에 영속화해주기 때문에 id가 null인채로 return 되는 것을 확인할 수가 있었다.(마찬가지로 기본키 전략이  IDENTITY)  
+
+그래서 cascade를 끊고 따로 저장해준 후 return 하는 방식으로 해결해주었다.
+
 ***
