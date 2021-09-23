@@ -390,6 +390,10 @@ member.addDonation(donation); 을 해준 후 Donation에 대한 정보를 return
 
 cacade PERSIST를 걸어주었기 때문에 이상이 없다고 생각했으나 이 방식은 더티체킹 때에 영속화해주기 때문에 id가 null인채로 return 되는 것을 확인할 수가 있었다.(마찬가지로 기본키 전략이  IDENTITY)  
 
-그래서 cascade를 끊고 따로 저장해준 후 return 하는 방식으로 해결해주었다.
+그래서 cascade를 끊고 따로 저장해준 후 return 하는 방식으로 해결해주었다.  
+
+=> https://joont92.github.io/jpa/CascadeType-PERSIST%EB%A5%BC-%ED%95%A8%EB%B6%80%EB%A1%9C-%EC%82%AC%EC%9A%A9%ED%95%98%EB%A9%B4-%EC%95%88%EB%90%98%EB%8A%94-%EC%9D%B4%EC%9C%A0/
+
+이러한 이유 때문이었다~! 속 시원하다 ...
 
 ***
