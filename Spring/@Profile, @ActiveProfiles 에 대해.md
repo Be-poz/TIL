@@ -67,6 +67,8 @@ spring:
 
 <br/>
 
++)  
+
 ![image](https://user-images.githubusercontent.com/45073750/135500018-d41085d2-0541-4dcf-a71d-a8b21af5b06c.png)
 
 현재 진행 중인 프로젝트의 클래스다. ``@ActiveProfiles("test")`` 가 붙여져 있다. 문득 궁금해졌다. 내 전체 코드에서 현재 ``Profile`` 설정을 해둔 부분은 yml 파일 밖에 없고 클래스 쪽은 profile에 따라서 다르게 동작하게끔 해둔 코드가 없는데, 굳이 테스트 코드를 test profile로 돌려야 할까??  
