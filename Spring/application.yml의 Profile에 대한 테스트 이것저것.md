@@ -4,7 +4,7 @@ Profile에 대한 개념이 있다는 가정하에 진행하겠다. 모른다면
 
 ``application-{프로파일}.yml`` 은 특정 Profile에 맞는 yml 파일이다. Profile을 따로 지정하지 않고 실행하게 된다면 ``application.yml``이 실행이 된다. 그렇다면 이때의 Profile은 무엇으로 실행되는 것일까??  
 
-![image](https://user-images.githubusercontent.com/45073750/135561133-a18a35af-ade1-4b16-be23-880b2c39c6a5.png)
+![image](https://user-images.githubusercontent.com/45073750/135568239-5e406e9a-1865-4372-9887-f62dedcc8f23.png)
 
 [Baeldung 싸이트](https://www.baeldung.com/spring-yaml) 피셜로 'default' Profile 이라고 한다.  
 그렇다면 Profile을 지정하지 않고 돌렸는데 ``application.yml`` 이 없다면 어떻게 될까??  
