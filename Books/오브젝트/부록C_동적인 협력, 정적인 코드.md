@@ -85,7 +85,7 @@ public class Breed{
     }
 }
 
-public abstract class Monster{
+public class Monster{
     private int health;
     private Breed breed;
 
