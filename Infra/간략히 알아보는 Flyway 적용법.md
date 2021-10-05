@@ -18,7 +18,7 @@
 
    ```yaml
    dependencies {
-   	implementation 'org.flywaydb:flyway-core:6.4.2'
+     implementation 'org.flywaydb:flyway-core:6.4.2'
    }
    ```
 
@@ -26,7 +26,7 @@
 
    ```yaml
    spring:
-   	flyway:
+     flyway:
        baseline-on-migrate: true
        baseline-version: 0
    ```
