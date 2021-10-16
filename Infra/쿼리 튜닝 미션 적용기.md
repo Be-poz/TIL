@@ -6,29 +6,7 @@
 
 연습 쿼리로 위의 요구사항이 주어졌다. 테이블 정보는 다음과 같았다.  
 
-![image](https://user-images.githubusercontent.com/45073750/136304833-d05b8527-233e-4600-bd45-f72d7d7f2848.png)
-
-급여 테이블  
-
-![image](https://user-images.githubusercontent.com/45073750/136304873-c3ca4c48-598f-4b43-a41f-d138de045cae.png)
-
-부서 테이블  
-
-![image](https://user-images.githubusercontent.com/45073750/136304897-a2060f90-0d17-44c3-972e-6ba8ebc2565a.png)
-
-부서관리자  
-
-![image](https://user-images.githubusercontent.com/45073750/136304926-7ce400a2-6c02-4c57-9e9b-0455193eabcd.png)
-
-사원
-
-![image](https://user-images.githubusercontent.com/45073750/136304942-fec2e059-6f53-4eb9-b714-6faa052a0fbe.png)
-
-사원출입기록 
-
-![image](https://user-images.githubusercontent.com/45073750/136304951-b1a38cad-9a6e-4765-abbe-ce8a3285a79f.png)
-
-직급  
+![image](https://user-images.githubusercontent.com/45073750/137576993-67eb95e8-2cd5-4117-a6be-fc32468b5eff.png)
 
 <br/>
 
@@ -105,7 +83,8 @@ extra의 정보는 다음과 같다.
 
 ![image](https://user-images.githubusercontent.com/45073750/136310879-35f48869-461d-4866-8b6a-246cdf4f6b77.png)
 
-테이블에 대한 정보는 컬럼이 어마어마해서 문제 별 필요한 부분만 언급하겠다.  
+테이블은 다음과 같았다.  
+![image](https://user-images.githubusercontent.com/45073750/137573944-2ee608af-abbe-42b7-a78f-17b2288e3446.png)
 
 첫 번째 요구사항인 Coding as a Hobby는 다음과 같은 결과값을 반환해야 한다.  
 ![image](https://user-images.githubusercontent.com/45073750/136989232-c317dc27-a827-483c-8ff6-09097d85bfc9.png)
