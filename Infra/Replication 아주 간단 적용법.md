@@ -311,3 +311,10 @@ yaml에 jpa 부분 직접 명시해줘야함. autoconfiguration 뺏기 때문에
 
 실행하면 aws 어쩌고 에러가 뜨길레 이걸로 해결함 [링크](https://github.com/spring-cloud/spring-cloud-aws/issues/556)  
 
+---
+
+### REFERENCE
+
+https://prolog.techcourse.co.kr/posts/1184  
+
+https://hyeon9mak.github.io/mysql-mariadb-replication-with-jpa/
