@@ -309,7 +309,11 @@ datasource:
 
 yaml에 jpa 부분 직접 명시해줘야함. autoconfiguration 뺏기 때문에  
 
+### 마주한 이슈  
+
 실행하면 aws 어쩌고 에러가 뜨길레 이걸로 해결함 [링크](https://github.com/spring-cloud/spring-cloud-aws/issues/556)  
+
+어느 순간 slave -> master 접속이 안되길레 찾아봤더니 다음과 같은 [문제](https://sd23w.tistory.com/414)가 발생해서 세팅을 다시하고 해결해줌  
 
 ---
 
