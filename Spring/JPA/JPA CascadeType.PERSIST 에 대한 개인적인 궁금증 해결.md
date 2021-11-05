@@ -326,7 +326,7 @@ class CascadeTest {
     }
 
     @Test
-    @DisplayName("이미 영속화 되어있는 Member에 Team을 영속화 시키는 경우")
+    @DisplayName("이미 영속화 되어있는 Team에 Member를 추가해주는 경우")
     public void test2() {
         Team team1 = new Team("team1");
         Member member1 = new Member("member1");
