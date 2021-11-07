@@ -392,8 +392,15 @@ cacade PERSIST를 걸어주었기 때문에 이상이 없다고 생각했으나 
 
 그래서 cascade를 끊고 따로 저장해준 후 return 하는 방식으로 해결해주었다.  
 
-=> https://joont92.github.io/jpa/CascadeType-PERSIST%EB%A5%BC-%ED%95%A8%EB%B6%80%EB%A1%9C-%EC%82%AC%EC%9A%A9%ED%95%98%EB%A9%B4-%EC%95%88%EB%90%98%EB%8A%94-%EC%9D%B4%EC%9C%A0/
++)  
 
-이러한 이유 때문이었다~! 속 시원하다 ...
+flush가 발생할 때에 CascadeType.PERSIST 나 CascadeType.ALL 이 걸려있는 경우 persist operation이 발생하기 때문에  
+그 시점에 Insert가 일어나고 Id를 채워주게 된다.
 
 ***
+
+### REFERENCE
+
+https://download.oracle.com/otndocs/jcp/persistence-2_2-mrel-eval-spec/index.html
+
+https://joont92.github.io/jpa/CascadeType-PERSIST%EB%A5%BC-%ED%95%A8%EB%B6%80%EB%A1%9C-%EC%82%AC%EC%9A%A9%ED%95%98%EB%A9%B4-%EC%95%88%EB%90%98%EB%8A%94-%EC%9D%B4%EC%9C%A0/
