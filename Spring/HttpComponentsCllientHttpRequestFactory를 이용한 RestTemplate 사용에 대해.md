@@ -6,9 +6,9 @@ RestTemplate을 선언할 때에 ``new RestTemplate()`` 다음과 같이 선언�
 ```java
 HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
 HttpClient client = HttpClientBuilder.create()
-  .setMaxConnTotal(50)
-  .setMaxConnPerRoute(20)
-  .build();
+                        .setMaxConnTotal(50)
+                        .setMaxConnPerRoute(20)
+                        .build();
 factory.setHttpClient(client);
 factory.setConnectTimeout(2000);
 factory.setReadTimeout(5000);
