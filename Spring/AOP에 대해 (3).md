@@ -547,6 +547,113 @@ AdviceTest - proxyClass=class com.example.advancedpractice.advice.ConcreteServic
 팩토리 내부에서 JDK 동적 프록시인 경우 ``InvocationHandler``가 ``Advice``를,  
 ``CGLIB``인 경우에는 ``MethodInterceptor``가 ``Advice``를 호출하도록 기능을 개발해두었기 때문이다.  
 
+JDK, CGLIB, Advice 별로 코드를 다시 한 번 비교해보겠다.(인터페이스와 구체 클래스는 생략)  
+
+```java
+//Jdk Dynamic Proxy (InvocationHandler 이용)
+@Slf4j
+public class BepozInvocationHandler implements InvocationHandler {
+
+    private final Object target;
+
+    public BepozInvocationHandler(Object target) {
+        this.target = target;
+    }
+
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        log.info("BepozInvocationHandler.invoke()");
+        log.info("chicken is god");
+
+        return method.invoke(target, args);
+    }
+}
+
+@Test
+public void dynamic() {
+  AInterface target = new AImpl();
+  BepozInvocationHandler handler = new BepozInvocationHandler(target);
+
+  AInterface proxy = (AInterface) Proxy.newProxyInstance(
+    AInterface.class.getClassLoader(),
+    new Class[]{AInterface.class},
+    handler);
+
+  proxy.call();
+  log.info("targetClass={}", target.getClass());
+  log.info("proxyClass={}", proxy.getClass());
+}
+```
+
+```java
+//CGLIB Dynamic Proxy (MethodInterceptor 이용)
+@Slf4j
+public class BepozMethodInterceptor implements MethodInterceptor {
+
+    private final Object target;
+
+    public BepozMethodInterceptor(Object target) {
+        this.target = target;
+    }
+
+    @Override
+    public Object intercept(Object o, Method method, Object[] objects, MethodProxy methodProxy) throws Throwable {
+        log.info("BepozMethodInterceptor.invoke()");
+        log.info("chicken is god");
+
+        return methodProxy.invoke(target, objects);
+    }
+}
+
+@Test
+public void cglib() {
+  ConcreteService target = new ConcreteService();
+
+  Enhancer enhancer = new Enhancer();
+  enhancer.setSuperclass(ConcreteService.class);
+  enhancer.setCallback(new BepozMethodInterceptor(target));
+  ConcreteService proxy = (ConcreteService) enhancer.create();
+
+  proxy.call();
+  log.info("targetClass={}", target.getClass());
+  log.info("proxyClass={}", proxy.getClass());
+}
+```
+
+```java
+//Advice 
+@Slf4j
+public class BepozAdvice implements MethodInterceptor {
+
+    @Override
+    public Object invoke(MethodInvocation invocation) throws Throwable {
+        log.info("BepozAdvice.invoke()");
+        log.info("chicken is god");
+
+        return invocation.proceed();
+    }
+}
+
+@Test
+public void advice() {
+  AInterface target = new AImpl();
+  ProxyFactory factory = new ProxyFactory(target);
+  factory.addAdvice(new BepozAdvice());
+
+  AInterface proxy = (AInterface) factory.getProxy();
+  String result = proxy.call();
+
+  log.info("result={}", result);
+  log.info("targetClass={}", target.getClass());
+  log.info("proxyClass={}", proxy.getClass());
+
+
+  assertThat(AopUtils.isAopProxy(proxy)).isTrue();
+  assertThat(AopUtils.isJdkDynamicProxy(proxy)).isTrue();
+  assertThat(AopUtils.isCglibProxy(proxy)).isFalse();
+}
+```
+
 이제 ``Pointcut``, ``Advisor``에 대해 알아보겠다.  
 4편에 계속...  
 
@@ -555,22 +662,3 @@ AdviceTest - proxyClass=class com.example.advancedpractice.advice.ConcreteServic
 ### REFERENCE
 
 [스프링 핵심원리 고급편 - 김영한](https://www.inflearn.com/course/%EC%8A%A4%ED%94%84%EB%A7%81-%ED%95%B5%EC%8B%AC-%EC%9B%90%EB%A6%AC-%EA%B3%A0%EA%B8%89%ED%8E%B8)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
