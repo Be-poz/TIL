@@ -393,5 +393,184 @@ InvocationHandler는 이렇게 했었다.
 
 그렇다면, 인터페이스가 존재하는 경우에는 ``InvocationHandler``를 적용하고 구체클래스만 존재하는 경우에는 ``MethodInterceptor``를 적용해야 할텐데, 두 기술을 함께 사용할 때에 이것들을 각각 중복으로 만들어서 관리를 해주어야 할까?  
 
+<br/>
+
+스프링은 동적 프록시를 통합해서 편리하게 만들어주는 ``ProxyFactory``라는 기능을 제공한다.  
+
+<img src="https://user-images.githubusercontent.com/45073750/147381483-64b2242f-8058-4376-91ac-8c975c2298a5.png" alt="image" style="zoom:67%;" />
+
+각각의 ``InvoactionHandler``와 ``MethodInterceptor``를 중복으로 만들필요 없이,  
+``Advice``라는 새로운 개념을 도입해서 이것만 만들면 알아서 처리되게끔 하였다.  
+
+``ProxyFactory``를 사용하면 ``Advice``를 호출하는 전용 ``InvocationHandler``, ``MethodInterceptor``를 내부에서 사용한다.  
+
+<img src="https://user-images.githubusercontent.com/45073750/147381557-f1749599-a3ff-4143-a2b2-4139dce34982.png" alt="image" style="zoom:67%;" />
+
+<img src="https://user-images.githubusercontent.com/45073750/147381563-1d975264-e9c3-43e2-b398-4ed112cfbe30.png" alt="image" style="zoom:67%;" />
+
+그리고, 앞서 특정 메서드일 경우에만 프록시가 적용되게끔 하였었는데, 스프링은 ``Pointcut``이라는 개념을 이용해서 해결한다.  
+
+이제 코드로 살펴보겠다.  
+
+```java
+@FunctionalInterface
+public interface MethodInterceptor extends Interceptor {
+  
+	@Nullable
+	Object invoke(@Nonnull MethodInvocation invocation) throws Throwable;
+
+}
+```
+
+이 코드는 스프링이 제공하는 ``MethodInterceptor``이다. ``CGLIB``이 제공하는 것과 이름은 같으나 다르니 유의하자.  
+``Interceptor``를 상속받고 있고, 이 ``Interceptor`` 상위에는 ``Advice``가 존재한다.  
+
+``MethodInvocaion invocation``에는 메서드를 호출하는 방법, 현재 프록시 객체 인스턴스, 메서드 인수들 등의 정보가 포함되어 있다. 기존에 파라미터로 제공되는 부분들이 이 안으로 모두 들어갔다고 생각하면 된다.  
+
+<img src="https://user-images.githubusercontent.com/45073750/147381728-82f52abc-298c-4041-8198-4b428db65976.png" alt="image" style="zoom:67%;" />
+
+```java
+@Slf4j
+public class BepozAdvice implements MethodInterceptor {
+
+    @Override
+    public Object invoke(MethodInvocation invocation) throws Throwable {
+        log.info("BepozAdvice.invoke()");
+        log.info("chicken is god");
+        
+        return invocation.proceed();
+    }
+}
+```
+
+``Advice`` 생성은 다음과 같이 한다.  
+``invocation.proceed()``를 호출하면 ``target``클래스를 호출하고 결과를 받는다. 하지만, 이전에 보았던 ``target`` 클래스의 정보는 보이지 않는다. 해당 정보들은 ``MethodInvocation invocation``안에 모두 포함되어 있다. 그 이유는 ``ProxyFactory``로 프록시를 생성하는 과정에서 target 정보를 파라미터로 전달받기 때문이다. 코드로 살펴보겠다.  
+
+```java
+// Jdk DynamicProxy Test를 할 때 사용했던 인터페이스와 구현하는 구체클래스
+public interface AInterface {
+
+    String call();
+}
+
+@Slf4j
+public class AImpl implements AInterface {
+
+    @Override
+    public String call() {
+        log.info("AImpl.call()");
+        return "a";
+    }
+}
+
+@Slf4j
+public class AdviceTest {
+
+    @Test
+    public void advice() {
+        AInterface target = new AImpl();
+        ProxyFactory factory = new ProxyFactory(target);
+        factory.addAdvice(new BepozAdvice());
+
+        AInterface proxy = (AInterface) factory.getProxy();
+        String result = proxy.call();
+        
+        log.info("result={}", result);
+        log.info("targetClass={}", target.getClass());
+        log.info("proxyClass={}", proxy.getClass());
+
+
+        assertThat(AopUtils.isAopProxy(proxy)).isTrue();
+        assertThat(AopUtils.isJdkDynamicProxy(proxy)).isTrue();
+        assertThat(AopUtils.isCglibProxy(proxy)).isFalse();
+    }
+}
+
+/*
+BepozAdvice - BepozAdvice.invoke()
+BepozAdvice - chicken is god
+AImpl - AImpl.call()
+AdviceTest - result=a
+AdviceTest - targetClass=class com.example.advancedpractice.advice.AImpl
+AdviceTest - proxyClass=class com.sun.proxy.$Proxy9
+```
+
+``new ProxyFactory(target)``코드를 이용해 팩토리를 생성할 때, 생성자에 프록시의 호출 대상을 함께 넘겨준다. 프록시 팩토리는 이 인스턴스 정보를 기반으로 프록시를 만들어낸다. 만약 이 인스턴스에 인터페이스가 있다면 JDK 동적 프록시를 기본으로 사용하고 인터페이스가 없고 구체 클래스만 있다면 ``CGLIB``를 통해서 동적 프록시를 생성한다. 이 경우에는 ``AInterface``를 이용하고 있으므로 JDK 동적 프록시를 생성한다. assert문도 정상적으로 통과되는 것을 확인할 수가 있다.  
+
+``addAdvice(new BepozAdvice())``로 부가 기능 로직을 설정했다.  
+``InvocationHandler``나 ``MethodInterceptor``와 유사하다. 이렇게 프록시가 제공하는 부가 기능 로직을 ``Advice``라고 한다.  
+
+``factory.getProxy()``로 프록시 객체를 생성했다.  
+
+이번에는 인터페이스가 없는 구체 클래스만 존재할 시에 ``CGLIB``을 사용하는지 확인해보겠다.  
+
+```java
+// CGLIB DynamicProxy Test를 할 때 사용했던 구체클래스
+@Slf4j
+public class ConcreteService {
+
+    public void call() {
+        log.info("ConcreteService.call()");
+    }
+}
+
+@Test
+public void cglibAdvice() {
+  ConcreteService target = new ConcreteService();
+  ProxyFactory factory = new ProxyFactory(target);
+  factory.addAdvice(new BepozAdvice());
+
+  ConcreteService proxy = (ConcreteService) factory.getProxy();
+  proxy.call();
+
+  log.info("targetClass={}", target.getClass());
+  log.info("proxyClass={}", proxy.getClass());
+
+
+  assertThat(AopUtils.isAopProxy(proxy)).isTrue();
+  assertThat(AopUtils.isJdkDynamicProxy(proxy)).isFalse();
+  assertThat(AopUtils.isCglibProxy(proxy)).isTrue();
+}
+
+/*
+BepozAdvice - BepozAdvice.invoke()
+BepozAdvice - chicken is god
+ConcreteService - ConcreteService.call()
+AdviceTest - targetClass=class com.example.advancedpractice.advice.ConcreteService
+AdviceTest - proxyClass=class com.example.advancedpractice.advice.ConcreteService$$EnhancerBySpringCGLIB$$862fd3d1
+```
+
+인터페이스 때와 동일하게 흘러간다. 인터페이스가 존재하더라도 ``CGLIB``을 이용하게끔 사용할 수도 있다.  
+``factory.setProxyTarget(true);``를 덧붙이면 인터페이스 존재여부와 상관없이 ``CGLIB``을 이용하게 된다.  
+
+``ProxyFactory`` 덕분에 특정 기술에 종속적이지 않게 ``Advice`` 하나로 편리하게 사용할 수 있었다.  
+팩토리 내부에서 JDK 동적 프록시인 경우 ``InvocationHandler``가 ``Advice``를,  
+``CGLIB``인 경우에는 ``MethodInterceptor``가 ``Advice``를 호출하도록 기능을 개발해두었기 때문이다.  
+
+이제 ``Pointcut``, ``Advisor``에 대해 알아보겠다.  
+4편에 계속...  
+
+---
+
+### REFERENCE
+
+[스프링 핵심원리 고급편 - 김영한](https://www.inflearn.com/course/%EC%8A%A4%ED%94%84%EB%A7%81-%ED%95%B5%EC%8B%AC-%EC%9B%90%EB%A6%AC-%EA%B3%A0%EA%B8%89%ED%8E%B8)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
