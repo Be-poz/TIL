@@ -192,7 +192,6 @@ public class BepozRepositoryInterfaceProxy implements BepozRepositoryV1 {
         TraceStatus status = null;
         try {
             status = logTrace.begin("BepozRepository.save()");
-
             target.save(id);
             logTrace.end(status);
         } catch (Exception e) {
@@ -215,7 +214,6 @@ public class BepozServiceInterfaceProxy implements BepozServiceV1 {
         TraceStatus status = null;
         try {
             status = logTrace.begin("BepozService.save()");
-
             target.save(id);
             logTrace.end(status);
         } catch (Exception e) {
@@ -238,7 +236,6 @@ public class BepozControllerInterfaceProxy implements BepozControllerV1 {
         TraceStatus status = null;
         try {
             status = logTrace.begin("BepozController.request()");
-
             String result = target.request(itemId);
             logTrace.end(status);
             return result;
@@ -256,10 +253,10 @@ public class BepozControllerInterfaceProxy implements BepozControllerV1 {
 ```
 
 프록시 객체를 만들고 구현한 메서드에서  ``LogTrace``를 사용했다. 이전에는 Impl 객체에 해당 로직을 추가했어야 했다.  
-하지만, 프록시 객체 덕분에 Impl 객체를 건드리지 않고 진행할 수 있게 되었다. 그리고 ``AppV1Config``는 다음과 같이 변경될 것이다.  
+하지만, 프록시 객체 덕분에 Impl 객체를 건드리지 않고 진행할 수 있게 되었다. 그리고 ``AppV1Config``대신 ``InterfaceProxyConfig``를 사용할 것이다.
 
 ```java
-//as is
+//이전에 사용하던 config
 @Configuration
 public class AppV1Config {
 
@@ -279,9 +276,9 @@ public class AppV1Config {
     }
 }
 
-//to be
+//현재 사용할 config
 @Configuration
-public class AppV1Config {
+public class InterfaceProxyConfig {
 
     @Bean
     public BepozControllerV1 bepozControllerV1(LogTrace logTrace) {
