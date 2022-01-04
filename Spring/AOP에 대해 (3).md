@@ -169,35 +169,35 @@ public class InterfaceProxyConfig {
 public class DynamicProxyBasicConfig {
 
     @Bean
-    public BepozControllerV1 orderControllerV1(LogTrace logTrace) {
-        BepozControllerV1Impl orderController = new BepozControllerV1Impl(bepozServiceV1(logTrace));
+    public BepozControllerV1 bepozControllerV1(LogTrace logTrace) {
+        BepozControllerV1Impl bepozController = new BepozControllerV1Impl(bepozServiceV1(logTrace));
 
         return (BepozControllerV1) Proxy.newProxyInstance(
-                orderController.getClass().getClassLoader(),
+                bepozController.getClass().getClassLoader(),
                 new Class[]{BepozControllerV1.class},
-                new LogTraceBasicHandler(orderController, logTrace)
+                new LogTraceBasicHandler(bepozController, logTrace)
         );
     }
 
     @Bean
     public BepozServiceV1 bepozServiceV1(LogTrace logTrace) {
-        BepozServiceV1Impl orderService = new BepozServiceV1Impl(bepozRepositoryV1(logTrace));
+        BepozServiceV1Impl bepozService = new BepozServiceV1Impl(bepozRepositoryV1(logTrace));
 
         return (BepozServiceV1) Proxy.newProxyInstance(
-                orderService.getClass().getClassLoader(),
+                bepozService.getClass().getClassLoader(),
                 new Class[]{BepozServiceV1.class},
-                new LogTraceBasicHandler(orderService, logTrace)
+                new LogTraceBasicHandler(bepozService, logTrace)
         );
     }
 
     @Bean
     public BepozRepositoryV1 bepozRepositoryV1(LogTrace logTrace) {
-        BepozRepositoryV1Impl orderRepository = new BepozRepositoryV1Impl();
+        BepozRepositoryV1Impl bepozRepository = new BepozRepositoryV1Impl();
 
         return (BepozRepositoryV1) Proxy.newProxyInstance(
-                orderRepository.getClass().getClassLoader(),
+                bepozRepository.getClass().getClassLoader(),
                 new Class[]{BepozRepositoryV1.class},
-                new LogTraceBasicHandler(orderRepository, logTrace));
+                new LogTraceBasicHandler(bepozRepository, logTrace));
     }
 }
 ```
@@ -253,38 +253,38 @@ public class LogTraceFilterHandler implements InvocationHandler {
 @Configuration
 public class DynamicProxyFilterConfig {
 
-    private static final String[] PATTERNS = {"request*", "order*", "save*"};
+    private static final String[] PATTERNS = {"request*", "save*"};
 
     @Bean
-    public BepozControllerV1 orderControllerV1(LogTrace logTrace) {
-        BepozControllerV1Impl orderController = new BepozControllerV1Impl(bepozServiceV1(logTrace));
+    public BepozControllerV1 bepozControllerV1(LogTrace logTrace) {
+        BepozControllerV1Impl bepozController = new BepozControllerV1Impl(bepozServiceV1(logTrace));
 
         return (BepozControllerV1) Proxy.newProxyInstance(
-                orderController.getClass().getClassLoader(),
+                bepozController.getClass().getClassLoader(),
                 new Class[]{BepozControllerV1.class},
-                new LogTraceFilterHandler(orderController, logTrace, PATTERNS)
+                new LogTraceFilterHandler(bepozController, logTrace, PATTERNS)
         );
     }
 
     @Bean
     public BepozServiceV1 bepozServiceV1(LogTrace logTrace) {
-        BepozServiceV1Impl orderService = new BepozServiceV1Impl(bepozRepositoryV1(logTrace));
+        BepozServiceV1Impl bepozService = new BepozServiceV1Impl(bepozRepositoryV1(logTrace));
 
         return (BepozServiceV1) Proxy.newProxyInstance(
-                orderService.getClass().getClassLoader(),
+                bepozService.getClass().getClassLoader(),
                 new Class[]{BepozServiceV1.class},
-                new LogTraceFilterHandler(orderService, logTrace, PATTERNS)
+                new LogTraceFilterHandler(bepozService, logTrace, PATTERNS)
         );
     }
 
     @Bean
     public BepozRepositoryV1 bepozRepositoryV1(LogTrace logTrace) {
-        BepozRepositoryV1Impl orderRepository = new BepozRepositoryV1Impl();
+        BepozRepositoryV1Impl bepozRepository = new BepozRepositoryV1Impl();
 
         return (BepozRepositoryV1) Proxy.newProxyInstance(
-                orderRepository.getClass().getClassLoader(),
+                bepozRepository.getClass().getClassLoader(),
                 new Class[]{BepozRepositoryV1.class},
-                new LogTraceFilterHandler(orderRepository, logTrace, PATTERNS));
+                new LogTraceFilterHandler(bepozRepository, logTrace, PATTERNS));
     }
 }
 ```

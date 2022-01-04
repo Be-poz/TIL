@@ -423,7 +423,7 @@ public class AppV2Config {
 public class ConcreteProxyConfig {
 
     @Bean
-    public BepozControllerV2 orderControllerV2(LogTrace logTrace) {
+    public BepozControllerV2 bepozControllerV2(LogTrace logTrace) {
         BepozControllerV2 controllerImpl = new BepozControllerV2(bepozServiceV2(logTrace));
         return new BepozControllerConcreteProxy(controllerImpl, logTrace);
     }

@@ -134,7 +134,7 @@ public class BeanPostProcessorConfig {
     @Bean
     public PackageLogTraceProxyPostProcessor logTraceProxyPostProcessor(LogTrace logTrace) {
         return new PackageLogTraceProxyPostProcessor(
-                "com.example.advancedpractice.csr.proxy.v3", getAdvice(logTrace));
+                "com.example.advancedpractice.csr.proxy", getAdvice(logTrace));
     }
 
     private Advisor getAdvice(LogTrace logTrace) {
@@ -176,7 +176,7 @@ implementation 'org.springframework.boot:spring-boot-starter-aop'
 코드에 적용해겠다.
 
 ```java
-//as is
+//이전에 사용하던 config
 @Slf4j
 @Configuration
 public class BeanPostProcessorConfig {
@@ -184,7 +184,7 @@ public class BeanPostProcessorConfig {
     @Bean
     public PackageLogTraceProxyPostProcessor logTraceProxyPostProcessor(LogTrace logTrace) {
         return new PackageLogTraceProxyPostProcessor(
-                "com.example.advancedpractice.csr.proxy.v3", getAdvice(logTrace));
+                "com.example.advancedpractice.csr.proxy", getAdvice(logTrace));
     }
 
     private Advisor getAdvice(LogTrace logTrace) {
@@ -195,10 +195,10 @@ public class BeanPostProcessorConfig {
     }
 }
 
-//to be
+//현재 사용할 config
 @Slf4j
 @Configuration
-public class BeanPostProcessorConfig {
+public class AutoProxyConfig {
 
     @Bean
     public Advisor advisor(LogTrace logTrace) {
@@ -235,12 +235,11 @@ public class BeanPostProcessorConfig {
 
 내가 적용하고자한 target이 아닌 다른 곳에서도 포인트컷 조건이 부합이 돼서 프록시가 만들어진 것이다.  
 ``request*``이기 때문에 ``requestMappingHandlerMapping()`` 또한 잡혀버린 것이다!!  
-이를 위해 코드를 살짝 수정해보겠다.  
+이를 위해 코드를 추가 및 수정 해보겠다.  
 
 ```java
-//as is
-@Bean
-public Advisor advisor(LogTrace logTrace) {
+//@Bean
+public Advisor advisor1(LogTrace logTrace) {
   NameMatchMethodPointcut pointcut = new NameMatchMethodPointcut();
   pointcut.setMappedNames("request*", "save*");
 
@@ -248,11 +247,10 @@ public Advisor advisor(LogTrace logTrace) {
   return new DefaultPointcutAdvisor(pointcut, advice);
 }
 
-//to be
 @Bean
-public Advisor advisor(LogTrace logTrace) {
+public Advisor advisor2(LogTrace logTrace) {
   AspectJExpressionPointcut pointcut = new AspectJExpressionPointcut();
-  pointcut.setExpression("execution(*com.example.advancedpractice.csr.proxy..*(..))");
+  pointcut.setExpression("execution(* com.example.advancedpractice.csr.proxy..*(..))");
 
   LogTraceAdvice advice = new LogTraceAdvice(logTrace);
   return new DefaultPointcutAdvisor(pointcut, advice);
@@ -342,10 +340,10 @@ public Object invoke(MethodInvocation invocation) throws Throwable {
 ```
 
 ```java
-//as is
+//이전에 사용하던 config
 @Slf4j
 @Configuration
-public class BeanPostProcessorConfig {
+public class AutoProxyConfig {
 
     @Bean
     public Advisor advisor(LogTrace logTrace) {
@@ -358,10 +356,10 @@ public class BeanPostProcessorConfig {
     }
 }
 
-//to be
+//현재 사용할 config
 @Slf4j
 @Configuration
-public class BeanPostProcessorConfig {
+public class AopConfig {
 
     @Bean
     public LogTraceAspect logTraceAspect(LogTrace logTrace) {

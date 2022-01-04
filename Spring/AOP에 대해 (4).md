@@ -267,7 +267,6 @@ ServiceImpl - save 호출
 먼저 V1부터 진행하겠다. V1은 인터페이스가 존재하는 경우의 프록시 코드였다.  
 
 ```java
-@Slf4j
 public class LogTraceAdvice implements MethodInterceptor {
 
     private final LogTrace logTrace;
@@ -283,6 +282,7 @@ public class LogTraceAdvice implements MethodInterceptor {
             Method method = invocation.getMethod();
             String message = method.getDeclaringClass().getSimpleName() + "." + method.getName() + "()";
             status = logTrace.begin(message);
+
             Object result = invocation.proceed();
             logTrace.end(status);
             return result;
@@ -295,76 +295,90 @@ public class LogTraceAdvice implements MethodInterceptor {
 ```
 
 ```java
-//to be
+//이전에 사용하던 config
 @Configuration
-public class AppV1Config {
+public class DynamicProxyFilterConfig {
 
     private static final String[] PATTERNS = {"request*", "save*"};
 
     @Bean
-    public BepozControllerV1 bepozControllerV1(LogTrace logTrace) {
-        BepozControllerV1Impl controllerImpl = new BepozControllerV1Impl(bepozServiceV1(logTrace));
+    public BepozControllerV1 orderControllerV1(LogTrace logTrace) {
+        BepozControllerV1Impl bepozController = new BepozControllerV1Impl(bepozServiceV1(logTrace));
+
         return (BepozControllerV1) Proxy.newProxyInstance(
-                BepozControllerV1.class.getClassLoader(),
+                bepozController.getClass().getClassLoader(),
                 new Class[]{BepozControllerV1.class},
-                new LogTraceBasicHandler(controllerImpl, logTrace, PATTERNS));
+                new LogTraceFilterHandler(orderController, logTrace, PATTERNS)
+        );
     }
 
     @Bean
     public BepozServiceV1 bepozServiceV1(LogTrace logTrace) {
-        BepozServiceV1Impl serviceImpl = new BepozServiceV1Impl(bepozRepositoryV1(logTrace));
+        BepozServiceV1Impl bepozService = new BepozServiceV1Impl(bepozRepositoryV1(logTrace));
+
         return (BepozServiceV1) Proxy.newProxyInstance(
-                BepozServiceV1.class.getClassLoader(),
+                bepozService.getClass().getClassLoader(),
                 new Class[]{BepozServiceV1.class},
-                new LogTraceBasicHandler(serviceImpl, logTrace, PATTERNS));
+                new LogTraceFilterHandler(orderService, logTrace, PATTERNS)
+        );
     }
 
     @Bean
     public BepozRepositoryV1 bepozRepositoryV1(LogTrace logTrace) {
-        BepozRepositoryV1Impl repositoryImpl = new BepozRepositoryV1Impl();
+        BepozRepositoryV1Impl bepozRepository = new BepozRepositoryV1Impl();
+
         return (BepozRepositoryV1) Proxy.newProxyInstance(
-                BepozRepositoryV1.class.getClassLoader(),
+                bepozRepository.getClass().getClassLoader(),
                 new Class[]{BepozRepositoryV1.class},
-                new LogTraceBasicHandler(repositoryImpl, logTrace, PATTERNS));
+                new LogTraceFilterHandler(orderRepository, logTrace, PATTERNS));
     }
 }
 
-//as is
+//현재 사용할 config
+@Slf4j
 @Configuration
-public class AppV1Config {
-    
-    @Bean
-    public BepozControllerV1 bepozControllerV1(LogTrace logTrace) {
-        BepozControllerV1Impl controllerImpl = new BepozControllerV1Impl(bepozServiceV1(logTrace));
-        ProxyFactory factory = new ProxyFactory(controllerImpl);
-        factory.addAdvisor(getAdvisor(logTrace));
+public class ProxyFactoryConfigV1 {
 
-        return (BepozControllerV1) factory.getProxy();
+    @Bean
+    public BepozControllerV1 orderController(LogTrace logTrace) {
+        BepozControllerV1 bepozController = new BepozControllerV1Impl(bepozService(logTrace));
+        ProxyFactory factory = new ProxyFactory(bepozController);
+        factory.addAdvisor(getAdvisor(logTrace));
+        BepozControllerV1 proxy = (BepozControllerV1) factory.getProxy();
+        log.info("ProxyFactory proxy={}, target={}", proxy.getClass(), bepozController.getClass());
+
+        return proxy;
     }
 
     @Bean
-    public BepozServiceV1 bepozServiceV1(LogTrace logTrace) {
-        BepozServiceV1Impl serviceImpl = new BepozServiceV1Impl(bepozRepositoryV1(logTrace));
-        ProxyFactory factory = new ProxyFactory(serviceImpl);
+    public BepozServiceV1 bepozService(LogTrace logTrace) {
+        BepozServiceV1 bepozService = new BepozServiceV1Impl(bepozRepository(logTrace));
+        ProxyFactory factory = new ProxyFactory(bepozService);
         factory.addAdvisor(getAdvisor(logTrace));
+        BepozServiceV1 proxy = (BepozServiceV1) factory.getProxy();
+        log.info("ProxyFactory proxy={}, target={}", proxy.getClass(), bepozService.getClass());
 
-        return (BepozServiceV1) factory.getProxy();
+        return proxy;
     }
 
     @Bean
-    public BepozRepositoryV1 bepozRepositoryV1(LogTrace logTrace) {
-        BepozRepositoryV1Impl repositoryImpl = new BepozRepositoryV1Impl();
-        ProxyFactory factory = new ProxyFactory(repositoryImpl);
+    public BepozRepositoryV1 bepozRepository(LogTrace logTrace) {
+        BepozRepositoryV1Impl bepozRepository = new BepozRepositoryV1Impl();
+        ProxyFactory factory = new ProxyFactory(bepozRepository);
         factory.addAdvisor(getAdvisor(logTrace));
         BepozRepositoryV1 proxy = (BepozRepositoryV1) factory.getProxy();
-        log.info("ProxyFactory proxy={} target={}", proxy.getClass(), repositoryImpl.getClass());
+        log.info("ProxyFactory proxy={}, target={}", proxy.getClass(), bepozRepository.getClass());
+
         return proxy;
     }
 
     private Advisor getAdvisor(LogTrace logTrace) {
         NameMatchMethodPointcut pointcut = new NameMatchMethodPointcut();
-        pointcut.setMappedNames("request*", "save*");
-        return new DefaultPointcutAdvisor(pointcut, new LogTraceAdvice(logTrace));
+				pointcut.setMappedNames("request*", "save*");
+
+        LogTraceAdvice advice = new LogTraceAdvice(logTrace);
+
+        return new DefaultPointcutAdvisor(pointcut, advice);
     }
 }
 
@@ -378,64 +392,50 @@ ProxyFactory proxy=class com.sun.proxy.$Proxy51 target=class com.example.advance
 이제 V2인 구체 클래스만 존재하고 수동 빈 등록의 경우 코드를 확인하겠다.  
 
 ```java
-//to be
-@Configuration
-public class AppV2Config {
-
-    @Bean
-    public BepozControllerV2 bepozControllerV2(LogTrace logTrace) {
-        BepozControllerV2 target = new BepozControllerV2(bepozServiceV2(logTrace));
-        return new BepozControllerConcreteProxy(target, logTrace);
-    }
-
-    @Bean
-    public BepozServiceV2 bepozServiceV2(LogTrace logTrace) {
-        BepozServiceV2 target = new BepozServiceV2(bepozRepositoryV2(logTrace));
-        return new BepozServiceConcreteProxy(target, logTrace);
-    }
-
-    @Bean
-    public BepozRepositoryV2 bepozRepositoryV2(LogTrace logTrace) {
-        BepozRepositoryV2 target = new BepozRepositoryV2();
-        return new BepozRepositoryConcreteProxy(target, logTrace);
-    }
-}
-
-//as is
-@Configuration
 @Slf4j
-public class AppV2Config {
+@Configuration
+public class ProxyFactoryConfigV2 {
 
     @Bean
-    public BepozControllerV2 bepozControllerV2(LogTrace logTrace) {
-        BepozControllerV2 target = new BepozControllerV2(bepozServiceV2(logTrace));
-        ProxyFactory factory = new ProxyFactory(target);
+    public BepozControllerV2 bepozController(LogTrace logTrace) {
+        BepozControllerV2 bepozController = new BepozControllerV2(bepozService(logTrace));
+        ProxyFactory factory = new ProxyFactory(bepozController);
         factory.addAdvisor(getAdvisor(logTrace));
-        return (BepozControllerV2) factory.getProxy();
+        BepozControllerV2 proxy = (BepozControllerV2) factory.getProxy();
+        log.info("ProxyFactory proxy={}, target={}", proxy.getClass(), bepozController.getClass());
+
+        return proxy;
     }
 
     @Bean
-    public BepozServiceV2 bepozServiceV2(LogTrace logTrace) {
-        BepozServiceV2 target = new BepozServiceV2(bepozRepositoryV2(logTrace));
-        ProxyFactory factory = new ProxyFactory(target);
+    public BepozServiceV2 bepozService(LogTrace logTrace) {
+        BepozServiceV2 bepozService = new BepozServiceV2(bepozRepository(logTrace));
+        ProxyFactory factory = new ProxyFactory(bepozService);
         factory.addAdvisor(getAdvisor(logTrace));
-        return (BepozServiceV2) factory.getProxy();
+        BepozServiceV2 proxy = (BepozServiceV2) factory.getProxy();
+        log.info("ProxyFactory proxy={}, target={}", proxy.getClass(), bepozService.getClass());
+
+        return proxy;
     }
 
     @Bean
-    public BepozRepositoryV2 bepozRepositoryV2(LogTrace logTrace) {
-        BepozRepositoryV2 target = new BepozRepositoryV2();
-        ProxyFactory factory = new ProxyFactory(target);
+    public BepozRepositoryV2 bepozRepository(LogTrace logTrace) {
+        BepozRepositoryV2 bepozRepository = new BepozRepositoryV2();
+        ProxyFactory factory = new ProxyFactory(bepozRepository);
         factory.addAdvisor(getAdvisor(logTrace));
         BepozRepositoryV2 proxy = (BepozRepositoryV2) factory.getProxy();
-        log.info("ProxyFactory proxy={} target={}", proxy.getClass(), target.getClass());
-        return new BepozRepositoryConcreteProxy(target, logTrace);
+        log.info("ProxyFactory proxy={}, target={}", proxy.getClass(), bepozRepository.getClass());
+
+        return proxy;
     }
 
     private Advisor getAdvisor(LogTrace logTrace) {
         NameMatchMethodPointcut pointcut = new NameMatchMethodPointcut();
         pointcut.setMappedNames("request*", "save*");
-        return new DefaultPointcutAdvisor(pointcut, new LogTraceAdvice(logTrace));
+
+        LogTraceAdvice advice = new LogTraceAdvice(logTrace);
+
+        return new DefaultPointcutAdvisor(pointcut, advice);
     }
 }
 
@@ -458,3 +458,4 @@ controller, service, repository 이렇게 3개의 빈을 등록하는데 동적 
 ### REFERENCE
 
 [스프링 핵심원리 고급편 - 김영한](https://www.inflearn.com/course/%EC%8A%A4%ED%94%84%EB%A7%81-%ED%95%B5%EC%8B%AC-%EC%9B%90%EB%A6%AC-%EA%B3%A0%EA%B8%89%ED%8E%B8)
+
