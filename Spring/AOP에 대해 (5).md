@@ -1,7 +1,7 @@
 # AOP에 대해 (5)
 
 ``Advice``를 이용해서 V1, V2 코드들을 변경했었으나, V3과 같이 컴포넌트 스캔을 이용한 자동 빈 등록의 경우를 해결하지 못했었다.  
-이번에는 ``BeanPostProcessor`, 빈 후처리기를 이용해서 해결을 해보려고 한다.  
+이번에는 ``BeanPostProcessor``, 빈 후처리기를 이용해서 해결을 해보려고 한다.  
 
 먼저, 일반적인 스프링 빈 등록은 객체를 생성 후에 스프링 컨테이너 내부의 빈 저장소에 등록을 하는 방식이다.  
 빈 후처리기는 객체 생성 후 빈 저장소에 등록하기 전에 다른 무언가의 처리를 해줄 수가 있다.  
@@ -405,7 +405,24 @@ public class AopConfig {
 
 지금까지 Controller, Service, Repository에 LogTrace를 이용해서 로깅을 적용했다.  
 특정 기능 하나에 관심이 있는 기능이 아닌 여러 기능 사이에 걸쳐서 들어가는 관심이다.  
-이것을 **횡단 관심사(cross-cutting concerns)**라고 한다.  
+이것을 **횡단 관심사(cross-cutting concerns)** 라고 한다.  
+
+지금까지 한 결과물을 한 번 정리해보자면,  
+
+<img src="https://user-images.githubusercontent.com/45073750/148085659-cec1129b-cc4d-4fde-beab-ccae1e5aff81.png" alt="image" style="zoom: 50%;" />
+
+인터페이스를 이용하고 수동 빈 등록  V1, 구체클래스를 이용하고 수동 빈 등록 V2, 구체 클래스 이용하고 자동 빈 등록 V3이 있었다.  
+
+<img src="https://user-images.githubusercontent.com/45073750/148085998-5a965fae-2294-48ce-bc77-277678d66278.png" alt="image" style="zoom:50%;" />
+
+그리고 다음과 같이 조금씩 변경시켰다. 이 단계를 정리해보자면,  
+
+1. 인터페이스 구현과 클래스 상속을 이용해 직접 프록시를 만들어 다형성을 이용하여 V1과 V2를 개선
+2. Jdk Dynamic Proxy를 이용해서 V1에서 더 이상 직접 프록시 클래스를 만들지 않도록 개선
+3. 인터페이스인 경우는 Jdk Dynamic Proxy, 클래스 상속의 경우는 CGLIB을 이용해서 동적 프록시를 사용했다. 두 기술을 함께 사용할 때 중복으로 관리할 수 없으므로 ProxyFactory를 이용하여 개선
+4. V3의 경우에는 수동 빈 등록이 아닌 자동 빈 등록이기 때문에 위의 방법 적용 불가. BeanPostProcessor를 이용해서 빈의 초기화 콜백 이전에 프록시를 생성하는 빈 후처리 코드를 넣어 개선
+5. 4번의 경우 BeanPostProcessor를 따로 빈 등록을 해주었으나 aspectJ 관련 라이브러리를 추가하여 스프링 부트가 자동으로 빈 등록하게끔 하여 개선
+6. @Aspect 을 이용하여 간편히 pointcut, advice를 등록하게끔 개선
 
 이제 스프링의 AOP에 대해서 조금 더 자세히 알아보자.  
 
