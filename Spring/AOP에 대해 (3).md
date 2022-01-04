@@ -129,9 +129,7 @@ public class LogTraceBasicHandler implements InvocationHandler {
         try {
             String message = method.getDeclaringClass().getSimpleName() + "." + method.getName() + "()";
             status = logTrace.begin(message);
-
             Object result = method.invoke(target, args);
-
             logTrace.end(status);
             return result;
         } catch (Exception e) {
@@ -143,58 +141,63 @@ public class LogTraceBasicHandler implements InvocationHandler {
 ```
 
 ```java
-//as is
+//이전에 사용하던 config
 @Configuration
-public class AppV1Config {
+public class InterfaceProxyConfig {
 
     @Bean
-    public BepozControllerV1 bepozControllerV1(LogTrace logTrace) {
-        BepozControllerV1Impl controllerImpl = new BepozControllerV1Impl(bepozServiceV1(logTrace));
+    public BepozControllerV1 bepozController(LogTrace logTrace) {
+        BepozControllerV1Impl controllerImpl = new BepozControllerV1Impl(bepozService(logTrace));
         return new BepozControllerInterfaceProxy(controllerImpl, logTrace);
     }
 
     @Bean
-    public BepozServiceV1 bepozServiceV1(LogTrace logTrace) {
-        BepozServiceV1Impl serviceImpl = new BepozServiceV1Impl(bepozRepositoryV1(logTrace));
+    public BepozServiceV1 bepozService(LogTrace logTrace) {
+        BepozServiceV1Impl serviceImpl = new BepozServiceV1Impl(bepozRepository(logTrace));
         return new BepozServiceInterfaceProxy(serviceImpl, logTrace);
     }
 
     @Bean
-    public BepozRepositoryV1 bepozRepositoryV1(LogTrace logTrace) {
+    public BepozRepositoryV1 bepozRepository(LogTrace logTrace) {
         BepozRepositoryV1Impl repositoryImpl = new BepozRepositoryV1Impl();
         return new BepozRepositoryInterfaceProxy(repositoryImpl, logTrace);
     }
 }
 
-//to be
+//현재 사용할 config
 @Configuration
-public class AppV1Config {
+public class DynamicProxyBasicConfig {
 
     @Bean
-    public BepozControllerV1 bepozControllerV1(LogTrace logTrace) {
-        BepozControllerV1Impl controllerImpl = new BepozControllerV1Impl(bepozServiceV1(logTrace));
+    public BepozControllerV1 orderControllerV1(LogTrace logTrace) {
+        BepozControllerV1Impl orderController = new BepozControllerV1Impl(bepozServiceV1(logTrace));
+
         return (BepozControllerV1) Proxy.newProxyInstance(
-                BepozControllerV1.class.getClassLoader(),
+                orderController.getClass().getClassLoader(),
                 new Class[]{BepozControllerV1.class},
-                new LogTraceBasicHandler(controllerImpl, logTrace));
+                new LogTraceBasicHandler(orderController, logTrace)
+        );
     }
 
     @Bean
     public BepozServiceV1 bepozServiceV1(LogTrace logTrace) {
-        BepozServiceV1Impl serviceImpl = new BepozServiceV1Impl(bepozRepositoryV1(logTrace));
+        BepozServiceV1Impl orderService = new BepozServiceV1Impl(bepozRepositoryV1(logTrace));
+
         return (BepozServiceV1) Proxy.newProxyInstance(
-                BepozServiceV1.class.getClassLoader(),
+                orderService.getClass().getClassLoader(),
                 new Class[]{BepozServiceV1.class},
-                new LogTraceBasicHandler(serviceImpl, logTrace));
+                new LogTraceBasicHandler(orderService, logTrace)
+        );
     }
 
     @Bean
     public BepozRepositoryV1 bepozRepositoryV1(LogTrace logTrace) {
-        BepozRepositoryV1Impl repositoryImpl = new BepozRepositoryV1Impl();
+        BepozRepositoryV1Impl orderRepository = new BepozRepositoryV1Impl();
+
         return (BepozRepositoryV1) Proxy.newProxyInstance(
-                BepozRepositoryV1.class.getClassLoader(),
+                orderRepository.getClass().getClassLoader(),
                 new Class[]{BepozRepositoryV1.class},
-                new LogTraceBasicHandler(repositoryImpl, logTrace));
+                new LogTraceBasicHandler(orderRepository, logTrace));
     }
 }
 ```
@@ -207,16 +210,17 @@ public class AppV1Config {
 
 ![image](https://user-images.githubusercontent.com/45073750/147106141-4fdd532e-be53-4a0b-9782-17e38e4d69cd.png)
 
-Controller의 request에 ``v1/no-log``가 존재하고 이 경우에는 로그를 찍으면 안된다. 이를 위해서 코드를 수정해보겠다.  
+Controller의 request에 ``v1/no-log``가 존재하고 이 경우에는 로그를 찍으면 안된다.  
+이를 위한  config를 추가해보겠다.  
 
 ```java
-public class LogTraceBasicHandler implements InvocationHandler {
+public class LogTraceFilterHandler implements InvocationHandler {
 
     private final Object target;
     private final LogTrace logTrace;
     private final String[] patterns;
 
-    public LogTraceBasicHandler(Object target, LogTrace logTrace, String[] patterns) {
+    public LogTraceFilterHandler(Object target, LogTrace logTrace, String[] patterns) {
         this.target = target;
         this.logTrace = logTrace;
         this.patterns = patterns;
@@ -247,40 +251,46 @@ public class LogTraceBasicHandler implements InvocationHandler {
 
 ```java
 @Configuration
-public class AppV1Config {
+public class DynamicProxyFilterConfig {
 
-    private static final String[] PATTERNS = {"request*", "save*"};
+    private static final String[] PATTERNS = {"request*", "order*", "save*"};
 
     @Bean
-    public BepozControllerV1 bepozControllerV1(LogTrace logTrace) {
-        BepozControllerV1Impl controllerImpl = new BepozControllerV1Impl(bepozServiceV1(logTrace));
+    public BepozControllerV1 orderControllerV1(LogTrace logTrace) {
+        BepozControllerV1Impl orderController = new BepozControllerV1Impl(bepozServiceV1(logTrace));
+
         return (BepozControllerV1) Proxy.newProxyInstance(
-                BepozControllerV1.class.getClassLoader(),
+                orderController.getClass().getClassLoader(),
                 new Class[]{BepozControllerV1.class},
-                new LogTraceBasicHandler(controllerImpl, logTrace, PATTERNS));
+                new LogTraceFilterHandler(orderController, logTrace, PATTERNS)
+        );
     }
 
     @Bean
     public BepozServiceV1 bepozServiceV1(LogTrace logTrace) {
-        BepozServiceV1Impl serviceImpl = new BepozServiceV1Impl(bepozRepositoryV1(logTrace));
+        BepozServiceV1Impl orderService = new BepozServiceV1Impl(bepozRepositoryV1(logTrace));
+
         return (BepozServiceV1) Proxy.newProxyInstance(
-                BepozServiceV1.class.getClassLoader(),
+                orderService.getClass().getClassLoader(),
                 new Class[]{BepozServiceV1.class},
-                new LogTraceBasicHandler(serviceImpl, logTrace, PATTERNS));
+                new LogTraceFilterHandler(orderService, logTrace, PATTERNS)
+        );
     }
 
     @Bean
     public BepozRepositoryV1 bepozRepositoryV1(LogTrace logTrace) {
-        BepozRepositoryV1Impl repositoryImpl = new BepozRepositoryV1Impl();
+        BepozRepositoryV1Impl orderRepository = new BepozRepositoryV1Impl();
+
         return (BepozRepositoryV1) Proxy.newProxyInstance(
-                BepozRepositoryV1.class.getClassLoader(),
+                orderRepository.getClass().getClassLoader(),
                 new Class[]{BepozRepositoryV1.class},
-                new LogTraceBasicHandler(repositoryImpl, logTrace, PATTERNS));
+                new LogTraceFilterHandler(orderRepository, logTrace, PATTERNS));
     }
 }
 ```
 
 ``request``와 ``save``로 시작하는 메서드명인 경우에만 로그를 남기도록 수정해주었다.  
+``DynamicProxyBasicConfig``와 비교했을 때, 크게 코드가 바뀐 곳은 없다.  
 
 <br/>
 
@@ -300,7 +310,7 @@ public interface MethodInterceptor extends Callback {
 }
 ```
 
-* obj: ``CGLIB``가 적용된 객체
+* o: ``CGLIB``가 적용된 객체
 * method: 호출된 메서드
 * objects: 메서드를 호출하면서 전달된 인수들
 * methodProxy: 메서드 호출에 이용

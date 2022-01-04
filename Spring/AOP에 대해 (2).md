@@ -397,7 +397,7 @@ public class BepozControllerConcreteProxy extends BepozControllerV2 {
 ```
 
 ```java
-//as is
+//이전에 사용하던 config
 @Configuration
 public class AppV2Config {
 
@@ -418,26 +418,26 @@ public class AppV2Config {
 }
 
 
-//to be
+//현재 사용할 config
 @Configuration
-public class AppV2Config {
+public class ConcreteProxyConfig {
 
     @Bean
-    public BepozControllerV2 bepozControllerV2(LogTrace logTrace) {
-        BepozControllerV2 target = new BepozControllerV2(bepozServiceV2(logTrace));
-        return new BepozControllerConcreteProxy(target, logTrace);
+    public BepozControllerV2 orderControllerV2(LogTrace logTrace) {
+        BepozControllerV2 controllerImpl = new BepozControllerV2(bepozServiceV2(logTrace));
+        return new BepozControllerConcreteProxy(controllerImpl, logTrace);
     }
 
     @Bean
     public BepozServiceV2 bepozServiceV2(LogTrace logTrace) {
-        BepozServiceV2 target = new BepozServiceV2(bepozRepositoryV2(logTrace));
-        return new BepozServiceConcreteProxy(target, logTrace);
+        BepozServiceV2 serviceImpl = new BepozServiceV2(bepozRepositoryV2(logTrace));
+        return new BepozServiceConcreteProxy(serviceImpl, logTrace);
     }
 
     @Bean
     public BepozRepositoryV2 bepozRepositoryV2(LogTrace logTrace) {
-        BepozRepositoryV2 target = new BepozRepositoryV2();
-        return new BepozRepositoryConcreteProxy(target, logTrace);
+        BepozRepositoryV2 repositoryImpl = new BepozRepositoryV2();
+        return new BepozRepositoryConcreteProxy(repositoryImpl, logTrace);
     }
 }
 ```
