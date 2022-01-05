@@ -7,7 +7,7 @@
 
 1. 인터페이스를 구현하고, 수동으로 빈 등록
 2. 인터페이스 없는 구체 클래스, 수동으로 빈 등록
-3. 인터페이스 없는 구체 클래스, ComponentScan을 이용하여 빈 등록
+3. 인터페이스 없는 구체 클래스, 컴포넌트 스캔을 이용하여 빈 등록
 
 <img src="https://user-images.githubusercontent.com/45073750/146638318-3ad330f0-5207-46a0-a7a8-6db6ee84d904.png" alt="image" style="zoom: 67%;" />
 
