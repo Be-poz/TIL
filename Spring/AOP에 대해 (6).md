@@ -371,5 +371,8 @@ public class AopTest {
   ...
 ```
 
+위의 경우에도 ``TxAspect`` 부터 걸린다.  
+
+이번에는 ``@Around``를 포함해서 여러 Advice에 대해 알아보겠다.  
 
 
