@@ -375,4 +375,107 @@ public class AopTest {
 
 이번에는 ``@Around``를 포함해서 여러 Advice에 대해 알아보겠다.  
 
+* ``@Around``: 메서드 호출 전 후에 수행, 가장 강력한 Advice, 조인 포인트 실행 여부 선택, 반환 값 변환, 예외 변환 등 가능
+* ``@Before``: 조인 포인트 실행 이전에 실행
+* ``@AfterReturning``: 조인 포인트가 정상 완료 후 실행
+* ``@AfterThrowing``: 메서드가 예외를 던지는 경우 실행
+* ``@After``: 조인 포인트가 정상 또는 예외에 관계없이 실행(finally)
 
+```java
+@Slf4j
+@Aspect
+public class AspectV6Advice {
+
+    @Around("bepoz.order.aop.Pointcuts.orderAndService()")
+    public Object doTransaction(ProceedingJoinPoint joinPoint) throws Throwable {
+
+        try {
+            //@Before
+            log.info("[around][Transaction start] {}", joinPoint.getSignature());
+            Object result = joinPoint.proceed();
+            //@AfterReturning
+            log.info("[around][Transaction commit] {}", joinPoint.getSignature());
+            return result;
+        } catch (Exception e) {
+            //@AfterThrowing
+            log.info("[around][Transaction rollback] {}", joinPoint.getSignature());
+            throw e;
+        } finally {
+            //@After
+            log.info("[around][Resource Release] {}", joinPoint.getSignature());
+        }
+    }
+
+    @Before("bepoz.order.aop.Pointcuts.orderAndService()")
+    public void doBefore(JoinPoint joinPoint) {
+        log.info("[before] {}", joinPoint.getSignature());
+    }
+
+    @AfterReturning(value = "bepoz.order.aop.Pointcuts.orderAndService()", returning = "result")
+    public void doReturn(JoinPoint joinPoint, Object result) {
+        log.info("[return] {} return={}", joinPoint.getSignature(), result);
+    }
+
+    @AfterThrowing(value = "bepoz.order.aop.Pointcuts.orderAndService()", throwing = "ex")
+    public void doThrowing(JoinPoint joinPoint, Exception ex) {
+        log.info("[ex] {} message={}", joinPoint.getSignature(), ex.getMessage());
+    }
+
+    @After(value = "bepoz.order.aop.Pointcuts.orderAndService()")
+    public void doAfter(JoinPoint joinPoint) {
+        log.info("[after] {}", joinPoint.getSignature());
+    }
+}
+```
+
+모든 Advice는 ``JoinPoint``르ㄹ 첫 번째 파라미터에 사용할 수 있다. 단, ``@Around`` 는 ``ProceedingJoinPoint`` 를 사용해야 한다.  
+
+``JoinPoint`` 인터페이스의 주요 기능  
+
+* ``getArgs()``: 메서드 인수를 반환
+* ``getThis()``: 프록시 객체를 반환
+* ``getTarget()``: 대상 객체를 반환
+* ``getSignature()``: 조언되는 메서드에 대한 설명을 반환
+* ``toString()``: 조언되는 방법에 대한 유용한 설명을 인쇄
+
+``ProceedingJoinPoint`` 인터페이스의 주요 기능
+
+* ``proceed()``: 다음 Advice나 Target을 호출
+
+``@Before``: 조인 포인트 실행 전에 호출이 된다. ``@Around`` 의 경우에는 직접 ``ProceedingJoinPoint.proceed()``를 호출해야 했지만, ``@Before`` 는 메서드 종료시 자동으로 호출이 된다.  
+
+``@AfterReturning``: 메서드 실행이 정상적으로 반환될 때 실행된다. 어노테이션 내부에 ``returning`` 속성을 두고 이곳에 사용되는 이름과 메서드 매개변수의 이름이 일치해야 한다. 위 코드에서 ``Object result``로 두었는데 해당 반환 타입(여기서는 ``Object``)를 반환하는 메서드만 대상으로 실행된다(부모 타입 지정하면 자식 타입 인정됨). 그렇기에 ``Obejct``로 두었으니 정상적으로 반환을 받을 수 있다.  
+
+``@AfterThrowing``: 메서드 실행이 예외를 던져서 종료될 때 실행된다. 앞서 ``returning``속성같이 ``throwing`` 속성을 이용한다.  
+
+``@After``: 메서드 실행이 종료되면 실행된다(finally와 같다). 정상 및 예외 반환 조건을 모두 처리한다. 일반적으로 리소스를 해제하는 데 사용한다.  
+
+``@Around``: 메서드의 실행의 전후에 작업을 수행한다(앞 뒤를 모두 케어하니 Around라고 네이밍 붙은 듯). ``proceed()`` 를 이용하여 타겟을 실행하고, 여러번 실행할 수도 있다.  
+
+<br/>
+
+위 코드로 실행을 시켜보면 로그는 다음과 같이 찍힌다.  
+
+![image](https://user-images.githubusercontent.com/45073750/148671897-3aa09b7c-295e-43cd-af4a-650dd08fbfb4.png)
+
+어드바이스 호출 순서가 ``@Around`` -> ``@Before`` -> ``@After`` -> ``@AfterReturning`` -> ``@AfterThrowing`` 의 순이기 때문이다.  
+따라서 위와 같은 정상적인 메서드 호출의 경우 around -> before -> return -> after -> around 로 찍힌 것이다.  
+물론 ``@Aspect`` 안에 동일한 종류의 Advice가 2개 있으면 순서가 보장되지 않으므로 V5에서 다룬 ``@Order`` 를 이용해야 한다.  
+
+그렇다면 ``@Around``로 모든 것을 처리할 수 있는데 왜 다른 Advice들이 존재하는걸까?  
+
+``@Around`` 는 항상 ``ProceedingJoinPoint.proceed()`` 를 직접 호출해주어야 한다.  
+반면, ``@Before`` 의 경우 그렇지 않다. 이러한 실수를 방지해준다. 그리고 무엇보다도 코드 작성 의도가 명확하게 들어난다는 점이다.  
+``@Before`` 어노테이션을 본 순간 타겟 호출 이전에 실행하는 코드라는 것을 바로 캐치할 수 있을 것이다.  
+
+<br/>
+
+이제 포인트 컷 표현식에 대해 자세히 알아보자.  
+
+7편에 계속...
+
+---
+
+### REFERENCE
+
+[스프링 핵심원리 고급편 - 김영한](https://www.inflearn.com/course/%EC%8A%A4%ED%94%84%EB%A7%81-%ED%95%B5%EC%8B%AC-%EC%9B%90%EB%A6%AC-%EA%B3%A0%EA%B8%89%ED%8E%B8)
