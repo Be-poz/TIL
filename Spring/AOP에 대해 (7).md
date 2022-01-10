@@ -546,21 +546,107 @@ public class ParameterTest {
 
 ### this, target
 
+먼저 코드부터 살펴보겠다.  
 
+```java
+@Slf4j
+@Import(ThisTargetTest.ThisTargetAspect.class)
+//@SpringBootTest(properties = "spring.aop.proxy-target-class=false") //JDK 동적 프록시
+@SpringBootTest(properties = "spring.aop.proxy-target-class=true") //CGLIB
+public class ThisTargetTest {
 
+    @Autowired
+    MemberService memberService;
 
+    @Test
+    void success() {
+        log.info("memberService Proxy={}", memberService.getClass());
+        memberService.hello("helloA");
+    }
 
+    @Slf4j
+    @Aspect
+    static class ThisTargetAspect {
 
+        @Around("this(bepoz.member.MemberService)")
+        public Object doThisInterface(ProceedingJoinPoint joinPoint) throws Throwable {
+            log.info("[this-interface] {}", joinPoint.getSignature());
+            return joinPoint.proceed();
+        }
 
+        @Around("target(bepoz.member.MemberService)")
+        public Object doTargetInterface(ProceedingJoinPoint joinPoint) throws Throwable {
+            log.info("[target-interface] {}", joinPoint.getSignature());
+            return joinPoint.proceed();
+        }
 
+        @Around("this(bepoz.member.MemberServiceImpl)")
+        public Object doThis(ProceedingJoinPoint joinPoint) throws Throwable {
+            log.info("[this-impl] {}", joinPoint.getSignature());
+            return joinPoint.proceed();
+        }
 
+        @Around("target(bepoz.member.MemberServiceImpl)")
+        public Object doTarget(ProceedingJoinPoint joinPoint) throws Throwable {
+            log.info("[targets-impl] {}", joinPoint.getSignature());
+            return joinPoint.proceed();
+        }
+    }
+}
 
+/*
+CGLIB인 경우
+memberService Proxy=class bepoz.member.MemberServiceImpl$$EnhancerBySpringCGLIB$$fd0677f3
+[targets-impl] String bepoz.member.MemberServiceImpl.hello(String)
+[target-interface] String bepoz.member.MemberServiceImpl.hello(String)
+[this-impl] String bepoz.member.MemberServiceImpl.hello(String)
+[this-interface] String bepoz.member.MemberServiceImpl.hello(String)
 
+JDK 동적 프록시인 경우
+memberService Proxy=class com.sun.proxy.$Proxy51
+[targets-impl] String bepoz.member.MemberService.hello(String)
+[target-interface] String bepoz.member.MemberService.hello(String)
+[this-interface] String bepoz.member.MemberService.hello(String)
+```
 
+``this``: 스프링 빈 객체(스프링 AOP 프록시)를 대상으로 하는 조인 포인트  
+``target``: Target 객체(스프링 AOP 프록시가 가르키는 실제 대상)를 대상으로 하는 조인 포인트  
 
+``this`` 와 ``target`` 은 ``*`` 이 불가능하고, 정확하게 타입을 지정해야 한고, 부모 타입을 허용한다.  
 
+이제 위 코드의 결과와 엮어서 설명을 해보겠다.  
 
+알다시피, JDK 동적 프록시는 인터페이스를 구현한 프록시 객체를 생성하고 CGLIB은 구체 클래스를 상속 받아서 프록시 객체를 생성한다. 위 코드에서 ``spring.aop.proxy-target-class`` 옵션을 사용해서 CGLIB, JDK 동적 프록시 어떤 것을 선택할 것인지 정해주었다(yml에 입력해도됨). true는 CGLIB, false는 JDK 동적 프록시다. 스프링 부트는 기본적으로 default로 true를 채택하고있다.  
 
+먼저, JDK 동적 프록시를 사용하는 경우를 살펴보겠다.  
 
+``this(bepoz.member.MemberService)``: proxy 객체로 판단하고, ``this`` 는 부모 타입을 허용하기 때문에 AOP가 적용된다.  
+``target(bepoz.member.MemberService)``: target 객체로 판단하고, ``target``은 부모 타입을 허용하기 때문에 AOP가 적용된다.  
 
+``this(bepoz.member.MemberServiceImpl)``: proxy 객체로 판단한다. JDK 동적 프록시로 만들어진 객체는 ``MemberService`` 를 기반으로 만든 새로운 클래스이기 때문에 ``MemberServiceImpl`` 를 알지 못한다. 따라서 AOP 적용 대상이 아니다.  
+``target(bepoz.member.MemberServiceImpl)``: target 객체로 판단한다. target 객체가 ``MemberServiceImpl`` 타입이므로 AOP 적용 대상이다.  
 
+![image](https://user-images.githubusercontent.com/45073750/148779304-97ea1324-fc10-400f-afaf-9126eb0b6971.png)
+
+이번에는 CGLIB 프록시를 사용하는 경우를 살펴보겠다.  
+
+``this(bepoz.member.MemberService)``: proxy 객체로 판단하고, ``this`` 는 부모 타입을 허용하기 때문에 AOP가 적용된다.  
+``target(bepoz.member.MemberService)``: target 객체로 판단하고, ``target``은 부모 타입을 허용하기 때문에 AOP가 적용된다.  
+
+``this(bepoz.member.MemberServiceImpl)``: proxy 객체로 판단한다. JDK 동적 프록시로 만들어진 객체는 ``MemberServiceImpl`` 를 상속받아 생성된 클래스이기 때문에 ``MemberServiceImpl`` 를 안다(부모이다). 따라서 AOP 적용 대상이다.다.  
+``target(bepoz.member.MemberServiceImpl)``: target 객체로 판단한다. target 객체가 ``MemberServiceImpl`` 타입이므로 AOP 적용 대상이다.  
+
+![image](https://user-images.githubusercontent.com/45073750/148779764-891852df-78b5-4a8d-ac6b-b03fa74eee82.png)
+
+<br/>
+
+이러한 이유로 인해 위 코드의 결과 로그가 저렇게 찍힌 것이다.  
+
+이제 스프링 AOP의 실무 주의사항에 대해 알아보겠다.  
+8편에서 계속...  
+
+---
+
+### REFERENCE
+
+[스프링 핵심원리 고급편 - 김영한](https://www.inflearn.com/course/%EC%8A%A4%ED%94%84%EB%A7%81-%ED%95%B5%EC%8B%AC-%EC%9B%90%EB%A6%AC-%EA%B3%A0%EA%B8%89%ED%8E%B8)
