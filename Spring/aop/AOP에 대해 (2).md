@@ -460,7 +460,17 @@ public class ConcreteProxyConfig {
 
 프록시를 이용해서 로그 추적기를 달아보았다. 하지만, 너무나도 많은 프록시 클래스들이 생성된다. 만약 적용해야 하는 클래스가 100개라면 클래스도 최소 100개를 만들어줘야 할 것이다. 프록시 클래스를 하나만 만들어서 하는 방법은 없을까?  
 
-이를 위해 동적 프록시를 이용하게 된다. 3편에서 계속...  
+이를 위해 동적 프록시를 이용하게 된다.  
+3편에서 계속...  
+
+[AOP에 대해 (1)](https://github.com/Be-poz/TIL/blob/master/Spring/aop/AOP%EC%97%90%20%EB%8C%80%ED%95%B4%20(1).md)  
+[AOP에 대해 (2) - 현재](https://github.com/Be-poz/TIL/blob/master/Spring/aop/AOP%EC%97%90%20%EB%8C%80%ED%95%B4%20(2).md)  
+[AOP에 대해 (3)](https://github.com/Be-poz/TIL/blob/master/Spring/aop/AOP%EC%97%90%20%EB%8C%80%ED%95%B4%20(3).md)  
+[AOP에 대해 (4)](https://github.com/Be-poz/TIL/blob/master/Spring/aop/AOP%EC%97%90%20%EB%8C%80%ED%95%B4%20(4).md)  
+[AOP에 대해 (5)](https://github.com/Be-poz/TIL/blob/master/Spring/aop/AOP%EC%97%90%20%EB%8C%80%ED%95%B4%20(5).md)  
+[AOP에 대해 (6)](https://github.com/Be-poz/TIL/blob/master/Spring/aop/AOP%EC%97%90%20%EB%8C%80%ED%95%B4%20(6).md)  
+[AOP에 대해 (7)](https://github.com/Be-poz/TIL/blob/master/Spring/aop/AOP%EC%97%90%20%EB%8C%80%ED%95%B4%20(7).md)  
+[AOP에 대해 (8)](https://github.com/Be-poz/TIL/blob/master/Spring/aop/AOP%EC%97%90%20%EB%8C%80%ED%95%B4%20(7).md)
 
 ---
 
