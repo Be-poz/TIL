@@ -422,14 +422,14 @@ GOF 패턴은 아니고, 스프링 내부에서만 이렇게 부른다고 한다
 여기서 더 나아가 원본코드를 아예 건드리고 싶지 않다는 생각이 든다. 이를 위해 프록시 패턴을 사용하게 된다.  
 2편에서 계속...  
 
-[AOP에 대해 (1) - 현재](https://github.com/Be-poz/TIL/blob/master/Spring/aop/AOP%EC%97%90%20%EB%8C%80%ED%95%B4%20(1).md)  
-[AOP에 대해 (2)](https://github.com/Be-poz/TIL/blob/master/Spring/aop/AOP%EC%97%90%20%EB%8C%80%ED%95%B4%20(2).md)  
-[AOP에 대해 (3)](https://github.com/Be-poz/TIL/blob/master/Spring/aop/AOP%EC%97%90%20%EB%8C%80%ED%95%B4%20(3).md)  
-[AOP에 대해 (4)](https://github.com/Be-poz/TIL/blob/master/Spring/aop/AOP%EC%97%90%20%EB%8C%80%ED%95%B4%20(4).md)  
-[AOP에 대해 (5)](https://github.com/Be-poz/TIL/blob/master/Spring/aop/AOP%EC%97%90%20%EB%8C%80%ED%95%B4%20(5).md)  
-[AOP에 대해 (6)](https://github.com/Be-poz/TIL/blob/master/Spring/aop/AOP%EC%97%90%20%EB%8C%80%ED%95%B4%20(6).md)  
-[AOP에 대해 (7)](https://github.com/Be-poz/TIL/blob/master/Spring/aop/AOP%EC%97%90%20%EB%8C%80%ED%95%B4%20(7).md)  
-[AOP에 대해 (8)](https://github.com/Be-poz/TIL/blob/master/Spring/aop/AOP%EC%97%90%20%EB%8C%80%ED%95%B4%20(7).md)  
+[AOP에 대해 (1) - 현재](https://github.com/Be-poz/TIL/blob/master/Spring/AOP/AOP%EC%97%90%20%EB%8C%80%ED%95%B4%20(1).md)  
+[AOP에 대해 (2)](https://github.com/Be-poz/TIL/blob/master/Spring/AOP/AOP%EC%97%90%20%EB%8C%80%ED%95%B4%20(2).md)  
+[AOP에 대해 (3)](https://github.com/Be-poz/TIL/blob/master/Spring/AOP/AOP%EC%97%90%20%EB%8C%80%ED%95%B4%20(3).md)  
+[AOP에 대해 (4)](https://github.com/Be-poz/TIL/blob/master/Spring/AOP/AOP%EC%97%90%20%EB%8C%80%ED%95%B4%20(4).md)  
+[AOP에 대해 (5)](https://github.com/Be-poz/TIL/blob/master/Spring/AOP/AOP%EC%97%90%20%EB%8C%80%ED%95%B4%20(5).md)  
+[AOP에 대해 (6)](https://github.com/Be-poz/TIL/blob/master/Spring/AOP/AOP%EC%97%90%20%EB%8C%80%ED%95%B4%20(6).md)  
+[AOP에 대해 (7)](https://github.com/Be-poz/TIL/blob/master/Spring/AOP/AOP%EC%97%90%20%EB%8C%80%ED%95%B4%20(7).md)  
+[AOP에 대해 (8)](https://github.com/Be-poz/TIL/blob/master/Spring/AOP/AOP%EC%97%90%20%EB%8C%80%ED%95%B4%20(8).md)  
 
 ---
 
