@@ -54,6 +54,7 @@ public abstract class ChickenMapper {
 ```
 
 이게 끝이다. 너무나도 간단하다. ``@Mapper`` 속성의 ``componentModel`` 에 spring 으로 설정을 해서 빈 등록이 되게끔 한다.  
+**주의해야 할 점: DTO 접근이 필요하므로 접근제어자를 풀어두던가 setter를 마련해두어야 한다.**  
 Chicken에서 필드를 뽑아 ChickenDto에 생성하는 클래스를 자동으로 만들어 준다 아래와 같이 말이다.  
 
 ```java
