@@ -88,7 +88,7 @@ public class MappingController {
 }
 ```
 
-<img src="https://user-images.githubusercontent.com/45073750/155687267-1a72b289-a1ba-40b9-bdcb-f4e090cc00d1.png" alt="image" style="zoom:50%;" />
+<img src="https://user-images.githubusercontent.com/45073750/155687267-1a72b289-a1ba-40b9-bdcb-f4e090cc00d1.png" alt="image" style="zoom:10%;" />
 
 이번에는 코드를 조금 더 추가해서 ``@RequestParam`` 과 ``@RequestBody`` 를 확인해보겠다.  
 
