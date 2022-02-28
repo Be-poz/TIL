@@ -1,6 +1,6 @@
 # Specification을 이용한 DataJPA 조회
 
-Specification을 이용하면 쿼리를 이용하는데 있어 여러 조건들을 손쉽게 처리할 수 있다.  
+Specification을 이용하면 쿼리를 이용하는데 있어 여러 조건들을 손쉽게 처리할 수 있고 동적인 처리가 가능하다.  
 Specification을 사용하지 않을 때의 코드를 먼저 살펴보겠다.  
 
 ```java
@@ -302,6 +302,7 @@ public void findAll() {
 ```
 
 클라이언트한테 입력받은 MemberSearchCriteria의 필드 여부에 따라서 Predicate 들을 조건으로 추가하고 안하고를 결정하는 Specification을 만들어보았다.  
+조건에 따른 동적인 조회 쿼리가 가능하다는 것이다.  
 
 잘만 활용하면 이렇게 재밌는 형식으로 만들어 볼 수도 있다. 아직 많은 사용 경험은 없지만, JpaRepository에서 기본적으로 제공해주는 메서드인데 추가적인 조건을 주어야할 때에 사용하기에 굉장히 좋을 것 같다고 생각한다.  
 
