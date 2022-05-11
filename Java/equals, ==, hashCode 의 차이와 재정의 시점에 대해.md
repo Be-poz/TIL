@@ -45,15 +45,6 @@ System.out.println(a.equals(b))		//true
 ```
 
 equals 내부 구현코드를 살펴보면 내부 값을 비교해서 리턴을 해주는 것을 알 수가 있다.  
-== 연산자에 대해서 추가적으로 재밌는 점은  
-
-```java
-static int a = 3;
-static int b = 3;
-System.out.println(a == b);	//false
-```
-
-다음과 같은 경우에는 static이 클래스가 메모리에 올라가는 시점에 메모리에 같이 올라가므로 참조하는 주소값이 다르기 때문에 false가 출력이 되는 것을 알 수가 있다.  
 
 hashCode는 해당 값을 hashFunction 한 값을 출력한다.  
 
