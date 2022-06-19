@@ -486,5 +486,326 @@ assertThat(factorial(75000).toString().length, `is`(333061))
 
 <br/>
 
+### 배열 다루기
 
+```kotlin
+val strings = arrayOf("this", "is", "an", "array", "of", "strings")
+val indices = strings.indices
+for ((index, value) in strings.withIndex()) {}
+for (string in strings) {}
+
+val nullStringArray = arrayOfNulls<String>(5)
+val squares = Array(5) { i -> (i * i).toString() }
+```
+
+arrayOf 로 배열을 사용할 수 있으며 널로만 채워진 배열을 생성할 수 있다. 이 때에도 특정 타입을 선택해야 한다는 점이 특이한 점이다.  
+Array 클래스를 이용해서 생성할 때에는 람다를 넣어 배열 생성에 로직을 가할 수 있다. 위의 결과는 {"0", "1", "4", "9",  "16"} 이 된다.  
+오토박싱과 언박싱 비용을 방지하기 위해 기본 타입을 나타내는 클래스도 있다. ex) ``boolean``, ``ArrayOf``, ``byteArrayOf``, ``intArrayOf`` 등등..  
+
+코틀린에는 명시적인 기본 타입은 없지만 값이 널 허용 값인 경우 생성된 바이트코드는  Integer와 와  Double과 같은 자바 래퍼 클래스를 사용하고, 널 비허용 값인 경우 생성된 바이트코드는  int와 double 같은 기본 타입을 사용한다.  
+
+<Br/>
+
+### 컬렉션 생성하기
+
+```kotlin
+val list = listOf<Int>(1, 2, 3, 4)
+val mutableList = mutableListOf<Int>(1, 2, 3, 4)
+
+setOf<>()
+mutableSetOf<>()
+
+mapOf<>()
+mutableMapOf<>()
+
+val list = LinkedList<Int>()
+list.add(3)
+list.add(1)
+list.addLast(999)
+list.addFirst(0)
+list[2] = 4
+list.addAll(listOf(11,22,33))
+for (i in list) {
+  println(i)
+}
+// 0 3 4 999 11 22 33
+```
+
+기본적인 코틀린 컬렉션은 불변이다. 가변을 원할 때에는 ``mutable`` 이 붙은 것을 사용하면 된다.  
+
+<Br/>
+
+### 컬렉션에서 읽기 전용 뷰 생성하기
+
+```kotlin
+val mutableNums = mutableListOf(1, 2, 3, 4, 5)
+val readOnlyNums = mutableNums.toList()
+assertEquals(mutableNums, readOnlyNums)
+assertNotSame(mutableNums, readOnlyNums)
+// toList() 를 이용해서 불변인 읽기 전용 컬렉션을 생성할 수 있다. 내부 값은 같으나 같은 객체를 나타내는 것은 아니다.
+// mutableNums에 값을 추가한다고해서 readOnlyNums에 추가되지 않는다.
+// 밑의 코드처럼 List 타입의 레퍼런스에 가변 리스트를 할당하면 mutableNums에 값을 추가해도 반영이 된다.
+
+var readOnlySameNums: List<Int> = mutableNums
+assertEquals(mutableNums, readOnlySameNums)
+assertSame(mutableNums, readOnlySameNums)
+```
+
+<br/>
+
+### 컬렉션에서 맵 만들기
+
+```kotlin
+val keys = 'a' .. 'f'
+val map = keys.associate { it to it.toString().repeat(5).capitalize() }
+println(map)
+
+val map2 = keys.associateWith { it.toString().repeat(5).capitalize() }
+println(map2)
+
+//{a=Aaaaa, b=Bbbbb, c=Ccccc, d=Ddddd, e=Eeeee, f=Fffff} 둘 다 결과값은 다음과 같다.
+```
+
+``associate`` 은 인자가 ``Pair<Char, String>`` 이며, ``associateWith`` 는 ``String`` 인 상태이다.  
+
+<br/>
+
+### 컬렉션이 빈 경우 기본값 리턴하기
+
+```kotlin
+data class Product(val name: String, var price: Double, var onSale: Boolean = false)
+
+fun onSaleProducts_ifEmptyCollection(products: List<Product>) =
+products.filter { it.onSale }
+.map { it.name }
+.ifEmpty { listOf("none") }
+.joinToString ( separator = ", " )
+
+fun onSaleProducts_ifEmptyString(products: List<Product>) =
+products.filter { it.onSale }
+.map { it.name }
+.joinToString ( separator = ", " )
+.ifEmpty { "none" }
+```
+
+전자는 컬렉션이 비었을 경우 기본 리스트를 제공하는 것이고 후자는 빈 문자열인 경우 기본 문자열을 제공하는 것이다.  
+
+<Br/>
+
+### 주어진 범위로 값 제한하기
+
+```kotlin
+val range = 3..8
+assertThat(5, `is`(5.coerceIn(range)))
+assertThat(range.start, `is`(1.coerceIn(range)))
+assertThat(range.endInclusive, `is`(9.coerceIn(range)))
+```
+
+``coerceIn`` 은 range 안의 값이면 그대로 return, 경계값을 넘어갔다면 range의 최소, 최대값을 리턴한다.  
+
+<br/>
+
+### 컬렉션을 윈도우로 처리하기
+
+```kotlin
+val range = 0..10
+val chunked = range.chunked(3) // 0,1,2 / 3,4,5 / 6,7,8 / 9,10
+
+assertThat(range.chunked(3) { it.sum() }, `is`(listOf(3, 12, 21, 19)))
+range.chunked(3) { it.sum()}
+```
+
+```kotlin
+public fun <T, R> Iterable<T>.chunked(size: Int, transform: (List<T>) -> R): List<R> {
+    return windowed(size, size, partialWindows = true, transform = transform)
+}
+// chunked의 내부구현은 windowed를 이요한다.
+// 인자 순서대로, 각 윈도우에 포함될 원소의 개수, 각 단계마다 전진할 원소의 개수, 마지막 부분이 필요한 원소의 개수를 갖지 못한 경우, 해당 부분을 그대로 유지할지 여부를 알려주는 불리언 값
+
+val windowed = range.windowed(3, 2, true)
+for (ints in windowed) {
+  println(ints)
+}
+// 0,1,2 / 2,3,4 / 4,5,6 / 6,7,8 / 8,9,10 / 10
+```
+
+<br/>
+
+### 리스트 구조 분해하기
+
+```kotlin
+val list = listOf("a", "b", "c", "d", "e", "f", "g")
+val (a, b, c, d, e) = list
+println("$a $b $c $d $e") // a b c d e
+```
+
+위의 방법으로  list에 접근할 수 있는 이유는 코틀린이 지원하는  ``componentN`` 이라는 함수가 list 내부에 정의되어 있기 때문이다.  
+component1 .. component5 까지 정의되어 있다. 즉 앞 5개의 값까지 가져올 수 있다는 것이다.  
+
+```kotlin
+data class Person(val name: String, val age: Int, val isMarried: Boolean)
+
+val me = Person("kang", 100, false)
+val (name, _, isMarried) = me
+```
+
+다음과 같이 사용할 수 있는 이유도 모두 데이터 클래스의 주 생성자에 들어있는 프로퍼티에 대해서 컴파일러가 자동으로  ``componoentN`` 함수를 만들어주기 때문이다. 사용하지 않는 값은 밑줄로 대체하여 사용할 수 있다.  
+
+<Br/>
+
+### 다수의 속성으로 정렬하기
+
+```kotlin
+data class Person(val name: String, val age: Int, val isMarried: Boolean)
+
+val people = listOf(
+  Person("abc", 21, true),
+  Person("aba", 21, true),
+  Person("abd", 11, false),
+  Person("pqa", 61, true),
+  Person("zx", 51, false),
+)
+
+val sorted = people.sortedWith(
+  compareBy({ it.age }, { it.name }, { it.isMarried })
+)
+
+sorted.forEach { println(it) }
+/*
+Person(name=abd, age=11, isMarried=false)
+Person(name=aba, age=21, isMarried=true)
+Person(name=abc, age=21, isMarried=true)
+Person(name=zx, age=51, isMarried=false)
+Person(name=pqa, age=61, isMarried=true)
+```
+
+```kotlin
+val comparator = compareBy(Person::age)
+.reversed()
+.thenBy(Person::name)
+.thenBy(Person::isMarried)
+val sorted2 = people.sortedWith(comparator)
+
+sorted2.forEach{ println(it)}
+/*
+Person(name=pqa, age=61, isMarried=true)
+Person(name=zx, age=51, isMarried=false)
+Person(name=aba, age=21, isMarried=true)
+Person(name=abc, age=21, isMarried=true)
+Person(name=abd, age=11, isMarried=false)
+```
+
+이런식으로 comparator를 따로 정의한 후에 사용할 수도 있다.  
+
+<br/>
+
+### 사용자 정의 이터레이터 정의하기
+
+```kotlin
+data class Player(val name: String)
+class Team(val name: String, 
+           val players: MutableList<Player> = mutableListOf()){
+
+  fun addPlayers(vararg people: Player) {
+    players.addAll(people)
+  }
+}
+
+val team = Team("Warriors")
+team.addPlayers(Player("kang"), Player("kim"), Player("lee"))
+
+for (player in team.players) {
+  println(player)
+}
+```
+
+팀의 플레이어 목록에 접근하려면 위와 같이 했어야 했을 것이다. 이를 iterator 라는 이름의 연산자 함수를 정의해서 간단하게 만들 수 있다.  
+
+```kotlin
+class Team(val name: String,
+           val players: MutableList<Player> = mutableListOf()): Iterable<Player> {
+
+  override operator fun iterator(): Iterator<Player> = players.iterator()
+
+  fun addPlayers(vararg people: Player) {
+    players.addAll(people)
+  }
+}
+```
+
+또는 그냥 ``Team`` 클래스 안에 ``operator fun iterator(): Iterator<Player> = players.iterator()`` 를 선언하는 방법을 사용할 수도 있다. Team 클래스가 Iterable 인터페이스를 구현하도록 변경되었고 그 이유는 Iterable 인터페이스에 추상 연산자 함수  iterator가 있기 때문이다. 그리고 이렇게 되었을 때에 아래와 같이 동작한다.  
+
+```kotlin
+team.map { it.name }.joinToString() 
+//kang, kim, lee
+```
+
+<br/>
+
+### 타입으로 컬렉션을 필터링하기
+
+```kotlin
+val list = listOf("a", LocalDate.now(), 3, 1, 4, "b")
+
+val strings = list.filterIsInstance<String>()
+val stringsMutable = list.filterIsInstanceTo(mutableListOf<String>())
+```
+
+``filterIsInstance`` 를 통해 원하는 타입을 필터링해서 추출할 수 있다.  
+``filterIsInstanceTo`` 를 통해 원하는 컬렉션의 타입을 명시해 해당 타입의 인스턴스로 컬렉션을 채울 수도 있다.  
+
+<br/>
+
+### 범위를 수열로 만들기
+
+코틀린에서 1 .. 5 처럼 범위를 지정할 수 윘는데 이것은 Comparable 인터페이스를 구현하는 모든 제네릭 타입 T에  ``rangeTo`` 라는 이름의 확장 함수가 추가되어 있기 때문이다. 
+
+```kotlin
+val startDate = LocalDateTime.now()
+val midDate = startDate.plusDays(3)
+val endDate = startDate.plusDays(5)
+
+val dateRange = startDate .. endDate
+
+assertTrue(startDate in dateRange)
+assertTrue(midDate in dateRange)
+assertTrue(endDate in dateRange)
+assertTrue(startDate.minusDays(1) !in dateRange)
+assertTrue(endDate.plusDays(1) !in dateRange)
+
+for (date in dateRange)							// 컴파일 에러
+(startDate .. endDate).forEach			// 컴파일 에러
+```
+
+이런 식으로 사용할 수 있다. 하지만 범위를 순회할 수는 없는데 그 이유는 범위가 수열이 아니라는 점이다. 수열은 순서 있는 값의 연속이다. 사용자 정의 수열은 표준 라이브러리인  ``IntProgression``, ``LongProgression``, ``CharProgression`` 처럼 ``Iterable`` 인터페이스를 구현해야 한다.  
+
+```kotlin
+internal class LocalDateProgressionIterator(
+  start: LocalDate,
+  val endInclusive: LocalDate,
+  val step: Long
+) : Iterator<LocalDate> {
+
+  private var current = start
+  override fun hasNext() = current <= endInclusive
+  override fun next(): LocalDate {
+    val next = current
+    current = current.plusDays(step)
+    return next
+  }
+}
+
+class LocalDateProgression(
+  override val start: LocalDate,
+  override val endInclusive: LocalDate,
+  val step: Long = 1
+) : Iterable<LocalDate>, ClosedRange<LocalDate> {
+
+  override fun iterator(): Iterator<LocalDate> = LocalDateProgressionIterator(start, endInclusive, step)
+
+  infix fun step(days: Long) = LocalDateProgression(start, endInclusive, step)
+}
+```
+
+<br/>
 
