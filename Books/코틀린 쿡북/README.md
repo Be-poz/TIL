@@ -809,3 +809,75 @@ class LocalDateProgression(
 
 <br/>
 
+### 지연 시퀀스 사용하기
+
+```kotlin
+(100 until 200)
+						.map { println("map value: ${it}"); it * 2 }						// 100개 계산
+						.filter { println("filter value: ${it}"); it % 3 == 0 } // 100개 계산
+						.first()
+/*
+map value: 100
+...
+map value:199
+filter value: 200
+...
+filter value: 398 */
+
+(100 until 200)
+						.map { println("map value: ${it}"); it * 2 }						// 100개 계산
+						.first { println("filter value: ${it}"); it % 3 == 0 }	// 3개 계산
+/* 
+map value: 100
+...
+map value: 199
+filter value: 200
+filter value: 202
+filter value: 204
+```
+
+후자의 예제는 첫 번째 원소를 발견하는 순간 진행을 멈춘다. 특정 조건에 다다를 때까지 오직 필요한 데이터만을 처리하는 방식을 쇼트 서킷이라 부른다.  
+
+```kotlin
+(100 until 200).asSequence()
+						.map { println("map value: ${it}"); it * 2 }						
+						.filter { println("filter value: ${it}"); it % 3 == 0 } 
+						.first()
+/*
+map value: 100
+filter value: 200
+map value: 101
+filter value: 202
+map value: 102
+filter value: 204
+```
+
+시퀀스를 사용하게되면 각 원소는 다음 원소로 진행하기 전에 완전한 전체 파이프라인에서 처리되어 6개의 연산만이 수행되는 것을 확인할 수 있다.  
+
+```kotlin
+var givenList = listOf<Int>()
+//var givenList = listOf<Int>(1, 2)
+
+val result = givenList.asSequence()
+.map { println("map value: ${it}"); it * 2 }
+.filter { println("filter value: ${it}"); it % 3 == 0 }
+.firstOrNull()
+
+println(result) //null
+```
+
+위와 같이 시퀀스가 비는 경우가 발생하여 ``.first()`` 순서에서 예외가 발생할 수 윘다. 이럴 때에는  ``.firstOrNull()`` 을 사용하면 된다.  
+
+시퀀스에 대한 연산은 중간 연산과 최종 연산이라는 범주로 나뉜다. ``map`` 과  ``filter`` 같은 중간 연산은 새로운 시퀀스를 리턴한다.  
+``first`` 또는  ``toList`` 같은 최종 연산은 시퀀스가 아닌 다른 것을 리턴한다.  
+
+최종 연산 없이는 시퀀스가 데이터를 처리하지 않는다(lazy한 동작방식).  
+
+이 때문에 위 예제 주석코드에서 1, 2를 넣고 돌렸을 때에도 ``filter`` 가 내뱉는 결과 값이 시퀀스이기 때문에 빈 시퀀스가 되어 예외가 발생하는 것을 확인할 수가 있다.  
+
++) 자바의 스트림에서도 동일하게 ``filter``나 ``sorted`` 와 같은 중간연산과 ``count``, ``toList`` 와 같은 단말 연산이 존재하고 단말 연산이 파이프라인에 실행하기 전까지 아무 연산도 수행되지 않는 lazy 한 동작을 하고 쇼트서킷을 이용하는 ``findAny``, ``limit`` 도 있기 때문에 이것과 빗대어 생각하면 이해하기 편할 것 같다.
+
+<br/>
+
+ ### 시퀀스 생성하기
+
