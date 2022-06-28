@@ -179,7 +179,7 @@ println(person.name)			// bepoz plus get!
 
 <br/>
 
-### const와  val의 차이 이해하가ㅣ
+### const와  val의 차이 이해하기
 
 ```kotlin
 class Task(val name: String, _priority: Int = DEFAULT_PRIORITY) {
@@ -880,4 +880,121 @@ println(result) //null
 <br/>
 
  ### 시퀀스 생성하기
+
+```kotlin
+val numSequence1 = sequenceOf(3, 1, 4, 1, 6, 7)
+val numSequence2 = listOf(3, 1, 4, 1, 6, 8).asSequence()
+```
+
+다음과 같은 방법으로 시퀀스 생성이 가능하다.  
+
+```kotlin
+fun Int.isPrime() =
+    this == 2 || (2..ceil(sqrt(this.toDouble())).toInt()) //ceil: 올림 함수, sqrt: 제곱근 함수
+        .none { divisor -> this % divisor == 0 }
+
+fun nextPrime(num: Int) =
+    generateSequence(num + 1) { it + 1 }
+        .first(Int::isPrime)
+
+public fun <T : Any> generateSequence(seed: T?, nextFunction: (T) -> T?): Sequence<T> =
+    if (seed == null)
+        EmptySequence
+    else
+        GeneratorSequence({ seed }, nextFunction)
+```
+
+위의 코드와 같이 ``generateSequence`` 를 통해 무한 시퀀스를 생성할 수 윘다. 첫 번째 파라미터는 초기값이고 두 번째는 다음 값을 생산하는 함수가 인자로 들어간다.  
+
+<br/>
+
+### 무한 시퀀스 다루기
+
+```kotlin
+fun Int.isPrime =
+		num == 2 || (2..ceil(sqrt(num.toDouble())).toInt())
+		  .none { divisor -> num % divisor == 0 }
+
+fun nextPrime(num: Int) =
+		generateSequence(num + 1) { it + 1 }
+				.first { it -> isPrime(it) }
+
+fun firstNPrimes(count: Int) =
+    generateSequence(2, ::nextPrime)
+        .take(count)								// 요청한 수만큼만 원소를 가져오는 중간 연산
+				.toList()
+
+println(firstNPrimes(5)) // 2, 3, 5, 7, 9
+```
+
+위의 코드처럼 ``take()``을 이용할 수도 있고 아래와 같이 마지막에 널을 리턴하게 하여 무한대의 원소를 갖는 시퀀스를 잘라내는 방법도 있다.  
+시퀀스는 null을 리턴받으면 종료한다.  
+
+```kotlin
+fun primesLessThan(max: Int): List<Int> =
+    generateSequence(2) { n -> if (n < max) nextPrime(n) else null }
+        .toList()
+				.dropLast(1)
+
+println(primesLessThan(10))
+// [2, 3, 5, 7]
+```
+
+또는  ``takeWhile`` 을 이용해서 아래와 같이 사용할 수도 있다.  
+
+```kotlin
+fun primesLessThan(max: Int): List<Int> =
+    generateSequence(2, ::nextPrime)
+        .takeWhile { it < max }
+        .toList()
+```
+
+<br/>
+
+### 시퀀스에서 yield 하기
+
+지금까지 시퀀스 사용을 기존 데이터에서 ``sequenceOf`` 를 하거나, 컬렉션을  ``asSequence`` 를 이용해 변환하거나 ``generateSequence`` 에 함수를 제공해 값을 생성했다. 이제 ``sequence`` 함수를 이용해 시퀀스를 사용해보겠다.  
+
+```kotlin
+public fun <T> sequence(
+		block: suspend SequenceScope<T>.() -> Unit
+): Sequence<T> = Sequence { iterator(block) }
+
+fun fibonacciSequence() = sequence {
+    var terms = Pair(0, 1)
+
+    while (true) {
+        yield(terms.first)
+        terms = terms.second to terms.first + terms.second
+    }
+}
+
+println(fibonacciSequence().take<Int>(10).toList())
+//[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
+```
+
+``sequence`` 함수는 주어진 블록에서 평가되는 시퀀스를 생성한다. 이 블록은 인자 없는 람다 함수이며 void를 리턴하고(코틀린에서는 Unit) 평가 후에 ``SequenceScope`` 타입을 받는다. ``sequence`` 함수를 사용하기 위해서는 중단함수인 ``yield`` 가 있는 람다를 제공해야 한다.  
+
+``yield`` 함수는 iterator에 값을 제공하고 다음 값을 요청할 때까지 값 생성을 중단한다.  
+코루틴과 잘 동작하며 코루틴에 값을 제공한 후에 다음 값을 요청할 때까지 해당 코루틴을 중단시킬 수 있다.  
+
+```kotlin
+fun yieldExample() = sequence {
+    val start = 0
+    yield(start)
+    yieldAll(1..5 step 2)
+    yieldAll(generateSequence(8) { it * 3})
+}
+
+println(yieldExample().take(10).toList())
+//[0, 1, 3, 5, 8, 24, 72, 216, 648, 1944]
+println(yieldExample().take(5).toList())
+//[0, 1, 3, 5, 8]
+```
+
+``yieldAll`` 을 이용한 시퀀스 생성도 가능하다.  
+
+ <Br/>
+
+### apply로 객체 생성 후에 초기화하기
 
