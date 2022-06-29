@@ -813,9 +813,9 @@ class LocalDateProgression(
 
 ```kotlin
 (100 until 200)
-						.map { println("map value: ${it}"); it * 2 }						// 100개 계산
-						.filter { println("filter value: ${it}"); it % 3 == 0 } // 100개 계산
-						.first()
+	.map { println("map value: ${it}"); it * 2 }  // 100개 계산
+	.filter { println("filter value: ${it}"); it % 3 == 0 }	// 100개 계산
+	.first()
 /*
 map value: 100
 ...
@@ -825,8 +825,8 @@ filter value: 200
 filter value: 398 */
 
 (100 until 200)
-						.map { println("map value: ${it}"); it * 2 }						// 100개 계산
-						.first { println("filter value: ${it}"); it % 3 == 0 }	// 3개 계산
+	.map { println("map value: ${it}"); it * 2 }	// 100개 계산
+	.first { println("filter value: ${it}"); it % 3 == 0 }	// 3개 계산
 /* 
 map value: 100
 ...
@@ -998,3 +998,110 @@ println(yieldExample().take(5).toList())
 
 ### apply로 객체 생성 후에 초기화하기
 
+영역 함수(스코프 함수)인  ``apply`` 를 사용하면 인스턴스의 속성과 함수를 사용할 수 있다.  
+이를 이용하여 객체의 생성자 인자만으로 할 수 없는 초기화 작업을 할 수가 있다.  
+
+```kotlin
+inline fun <T> T.apply(block: T.() -> Unit): T
+
+class Person(var name: String, var age: Int){
+    fun getOlder() {
+        age += 1
+    }
+}
+
+// apply 사용 전
+val person = Person("kang", 99)
+person.name += " junior"
+person.getOlder()
+
+// apply 사용 후
+val person2 = Person("kang", 99).apply {
+    name += "junior"
+    getOlder()
+}
+```
+
+``apply`` 함수는 this를 인자로 전달하고  this를 리턴하는 확장 함수다.  
+``person.`` 를 안붙이고 해당 인스턴스의 변수를 조작하고 함수 호출도 가능해서 코드가 더 깔끔해졌다.  
+
+<br/>
+
+### 부수 효과를 위해 also 사용하기
+
+코드 흐름을 방해하지 않고 메세지를 출력하거나 다른 부수 효과를 생성하고 싶을 때 사용된다.  
+객체의 유효성 검사 등을 할 때에 사용된다고 한다.  
+
+```kotlin
+inline fun <T> T.also(block: (T) -> Unit): T
+
+val book = createBook()
+	.also { println(it) }
+  .also { Logger.getAnonymousLogger().info(it.toString()) }
+
+val person = Person("kang", 100).also {
+    it.name = "asdf"
+    it.getOlder()
+}
+```
+
+``it`` 을 사용해서 접근할 수 있다.  
+
+<br/>
+
+### let 함수와 엘비스 연산자 사용하기
+
+``let`` 함수는 컨텍스트 객체가 아닌 블록의 결과를 리턴한다.
+
+```kotlin
+inline fun <T, R> T.let(block: (T) -> R): R
+
+fun processingString(str: String) =
+    str.let {
+        when {
+            it.isEmpty() -> "Empty"	//it으로 접근
+            it.isBlank() -> "Blank"
+            else -> it.capitalize()
+        }
+    }
+
+fun processingString(str: String?) =
+    str?.let {
+        when {
+            it.isEmpty() -> "Empty"
+            it.isBlank() -> "Blank"
+            else -> it.capitalize()
+        }
+    } ?: "Null"
+
+val result = Person("kang", 101).let {
+            it.name
+        }
+println(result) // kang
+```
+
+  <br/>
+
+### 임시 변수로  let 사용하기
+
+```kotlin
+val numbers = mutableListOf("one", "two", "three", "four", "five")
+val resultList = numbers.map { it.length }.filter { it > 3 }
+println(resultList)
+```
+
+위와 같이 임시 변수인 ``resultList`` 에 할당하고 print 하고 싶지 않을 때에  ``let`` 을 이용하여 처리할 수 있다.  
+
+ ```kotlin
+val letResult = numbers.map { it.length }.filter { it > 3 }.let {
+    println(it)
+} //kotlin.Unit
+
+val alsoResult = numbers.map { it.length }.filter { it > 3 }.also {
+    println(it)
+} //[5, 4, 4]
+ ```
+
+``also`` 로도 처리할 수 있다. ``also`` 는 컨텍스트 객체를 리턴하는 반면 ``let`` 은 블록의 결과를 리턴한다. 이 경우에는 ``Unit`` 이다.  
+
+<br/>
