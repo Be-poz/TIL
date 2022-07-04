@@ -1105,3 +1105,221 @@ val alsoResult = numbers.map { it.length }.filter { it > 3 }.also {
 ``also`` 로도 처리할 수 있다. ``also`` 는 컨텍스트 객체를 리턴하는 반면 ``let`` 은 블록의 결과를 리턴한다. 이 경우에는 ``Unit`` 이다.  
 
 <br/>
+
+### 대리자를 사용해서 합성 구현하기
+
+코틀린은 어떤 속성의 획득자와 설정자가 대리자라고 불리는 다른 객체에서 구현되어 있다는 것을 암시하기 위해 속성에 by 키워드를 사용한다.
+
+```kotlin
+interface Dialable {
+  fun dial(number: String): String
+}
+
+class Phone: Dialable {
+  override fun dial(number: String) = "Dialing $number..."
+}
+
+interface Snappable {
+  fun takePicture(): String
+}
+
+class Camera: Snappable {
+  override fun takePicture() = "Taking pircutre..."
+}
+
+class SmartPhone(
+  private val phone: Dialable = Phone(),
+  private val camera: Snappable = Camera(),
+): Dialable by phone, Snappable by camera
+
+---
+
+private val smartPhone: SmartPhone = SmartPhone();
+
+assertEquals("Dialing 555-1234...", smartPhone.dial("555-1234"))
+assertEquals("Taking picture...", smartPhone.takePicture())
+```
+
+위의 코드는 자바로 보면 다음과 같다.  
+
+```java
+public final class SmartPhone implements Dialable, Snappable {
+  private final Dialable phone;
+  private final Snappable camera;
+  
+  public SmartPhone(@NotNull Dialable phone, @NotNull Snappable camera) {
+    this.phone = phone;
+    this.camera = camera;
+  }
+  
+  @NotNull
+  public String dial(@NotNull String number) {
+    return this.phone.dial(nubmer);
+  }
+  
+  @NotNull
+  public String takePicture() {
+    return this.camera.takePicture();
+  }
+}
+```
+
+SmartPhone에 포함된 객체는 SmartPhone을 통해 노출된 것이 아니라 오직 포함된 객체의 public 함수만이 노출된다.  
+Dialable과 Snappable 인터페이스에 선언되어 있고, 이와 일치하는 함수만 사용 가능하다.  
+
+<br/>
+
+### lazy 대리자 사용하기
+
+어떤 속성이 필요할 때까지 해당 속성의 초기화를 지연시키고 싶을 때에 lazy 대리자를 사용한다.  
+
+```kotlin
+val ultimateAnswer: Int by lazy {
+  println("computing the answer")
+  20
+}
+
+println(ultimateAnswer)
+println(ultimateAnswer)
+/*
+computing the answer
+20
+20
+```
+
+처음 호출 시에만 ``computing the answer`` 를 출력하게된다. 첫 호출을 받은 lazy가 받은 람다를 실행하고 변수에 20을 리턴하게된다.  
+이후 다시 출력할 때에는 변수에 저장된 20을 출력하게 되는 것이다.  
+
+<br/>
+
+### 값이 널이 될 수 없게 만들기
+
+보통 코틀린 클래스의 속성은 클래스 생성 시에 초기화된다. 속성 초기화를 지연시키는 한 가지 방법은 속성에 처음 접근하기 전에 속성이 사용되면 예외를 던지는 대리자를 제공하는 notnull 함수를 사용하는 것이다.
+
+```kotlin
+var shouldNotBeNull: String by Delegates.notNull<String>()
+assertThrows<IllegalStateException> { shouldNotBeNull }
+
+shouldNotBeNull = "Hello, World!"
+assertDoesNotThrow { shouldNotBeNull }
+assertEquals("Hello, World!", shouldNotBeNull)
+```
+
+``notNull`` 대리자를 이용한 ``shouldNotBeNull`` 이 그냥 사용이되면 ``IllegalStateException`` 이 던져지게된다.  
+
+<br/>
+
+### observable과 vetoable 대리자 사용하기
+
+속성의 변경을 가로채서, 필요에 따라 변경을 거부하고 싶을 때에 observable과 vetoable를 사용한다.  
+변경 감지에는 observable 함수를 사용하고, 변경의 적용 여부를 결정할 때는 vetoable 함수와 람다를 사용하면 된다.  
+
+```kotlin
+var watched: Int by Delegates.observable(1) { prop, old, new ->
+                                             println("${prop.name} changed from $old to $new")
+                                            }
+
+var checked: Int by Delegates.vetoable(0) { prop, old, new ->
+                                           println("Trying to change ${prop.name} from $old to $new")
+                                           new >= 0
+                                          }
+
+assertEquals(1, watched)
+watched *= 2
+assertEquals(2, watched)
+watched *= 2
+assertEquals(4, watched)
+
+assertEquals(0, checked)
+checked = 5
+assertEquals(5, checked)
+checked = -3
+assertEquals(5, checked)
+/*
+watched changed from 1 to 2
+watched changed from 2 to 4
+Trying to change checked from 0 to 5
+Trying to change checked from 5 to -3
+```
+
+``watched`` 는 변경이 이루어 질 때 마다 내부의 람다 함수를 호출한다. 따라서 println 을 수행한다.  
+checked 또한 마찬가지인데, 0 이상인 값에 대해서만 변경을 받아들이고 있는 것을 확인할 수가 있다.  
+
+<Br/>
+
+### 대리자로서 Map 제공하기
+
+Map을 제공해 객체를 초기화할 수 있다.  
+
+```kotlin
+data class Project(val map: MutableMap<String, Any?>) {
+  val name: String by map
+  var priority: Int by map
+  var completed: Boolean by map
+}
+
+val project = Project(
+  mutableMapOf(
+    "name" to "Learn Kotlin",
+    "priority" to 5,
+    "completed" to true))
+
+assertAll(
+  { assertEquals("Learn Kotlin", project.name) },
+  { assertEquals(5, project.priority) },
+  { assertTrue(project.completed)}
+)
+```
+
+이 코드가 가능한 이유는 ``MutableMap`` 에 ``ReadWriteProperty`` 대리자가 되는데 필요한 올바른 시그니처의 ``setValue`` 와 ``getValue`` 확장 함수가 있기 때문이다.  이런 기능이 필요한 이유는 무엇일까?  
+
+```kotlin
+fun getMapFromJSON() =
+    Gson().fromJson<String, Any?>(
+        """{ "name": "Learn Kotlin", "priority", 5, "completed": true}""",
+        MutableMap::class.java
+    )
+val project = Project(getMapFromJSON())
+
+assertAll(
+    { assertEquals("Learn Kotlin", project.name) },
+    { assertEquals(5, project.priority) },
+    { assertTrue(project.completed)}
+)
+```
+
+다음과 같이 JSON을 파싱하거나 다른 동적인 작업을 하는 애플리케이션에서 사용할 수 있기 때문이다.  
+
+<Br/>
+
+### 사용자 정의 대리자 만들기
+
+어떤 클래스의 속성이 다른 클래스의 획득자와 설정자를 사용하고 싶을 때에 ``ReadOnlyProperety`` 와 ``ReadWriteProperty`` 를 구현하는 클래스를 생성함으로써 직접 속성 대리자를 작성하면 된다. 굳이 위 두 인터페이스를 구현할 필요는 없고 시그니처와 동일한 ``getValue``, ``setValue`` 함수만으로도 충분하다.  
+
+```kotlin
+class Delegate {
+    operator fun getValue(thisRef: Any?, property: KProperty<*>): String {
+        return "$thisRef, thank you for delegating '${property.name}' to me!"
+    }
+
+    operator fun setValue(thisRef: Any?, property: KProperty<*>, value: String) {
+        println("$value has been assigned to '${property.name}' in $thisRef.")
+    }
+}
+
+class Example {
+    var p: String by Delegate()
+}
+
+fun main() {
+    val e = Example()
+    println(e.p)
+    e.p = "NEW"
+}
+
+/*
+delegates.Example$3c98385c, thank you for delegating 'p' to me!
+NEW has been assigned to 'p' in delegates.Example$3c98385c.
+```
+
+<br/>
