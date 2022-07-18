@@ -1323,3 +1323,102 @@ NEW has been assigned to 'p' in delegates.Example$3c98385c.
 ```
 
 <br/>
+
+### use로 리소스 관리하기
+
+자바에는 try-with-resources 구조를 사용하여 리소스를 관리할 수 있지만, 코틀린에는 try-with-resources 구조를 지원하지 않는다.  
+코틀린은 Closeable에는 확장 함수 use, Reader와 File에는 useLine을 추가했다.  
+
+```kotlin
+File("/Users/user/Desktop/word").useLines { line ->
+    line.filter { it.length > 20 }
+        .sortedByDescending(String::length)
+        .take(10)
+        .toList()
+```
+
+위의 로직은 해당 파일에서 가장 긴 단어 10개를 리턴하는 함수다. use와 useLines의 시그니처는 다음과 같다.  
+
+```kotlin
+public inline fun <T> File.useLines(charset: Charset = Charsets.UTF_8, block: (Sequence<String>) -> T): T 
+
+public inline fun <T : Closeable?,R> T.use(block: (T) -> R):R
+```
+
+<br/>
+
+### 파일에 기록하기
+
+```kotlin
+File("/Users/user/Desktop/example.txt").printWriter().use { writer ->
+    writer.println("example data")
+}
+```
+
+<br/>
+
+### 코틀린 버전 알아내기
+
+```kotlin
+println("${KotlinVersion.CURRENT}")
+```
+
+``KotlinVersion.CURRENT`` 를 통해 알아낼 수 있다.  
+
+<br/>
+
+### 반복적으로 람다 실행하기
+
+주어진 람다 식을 여러 번 실행하고 싶을 때에 코틀린 내장 ``repeat`` 함수를 사용하면 된다.  
+
+```kotlin
+repeat(5) {
+    println("Counting: $it")
+}
+/*
+Counting: 0
+Counting: 1
+Counting: 2
+Counting: 3
+Counting: 4
+```
+
+<br/>
+
+### 완벽한 when 강제하기
+
+```kotlin
+fun printMod3(n:Int) {
+    when (n % 3) {
+        0 -> println("$n % 3 == 0")
+        1 -> println("$n % 3 == 1")
+        2 -> println("$n % 3 == 2")
+    }
+}
+
+fun printMod3SingleStatement(n: Int) = when (n % 3) {
+    0 -> println("$n % 3 == 0")
+    1 -> println("$n % 3 == 1")
+    2 -> println("$n % 3 == 2")
+    else -> println("problem occurred")
+}
+
+fun printMod3(n:Int) {
+    when (n % 3) {
+        0 -> println("$n % 3 == 0")
+        1 -> println("$n % 3 == 1")
+        2 -> println("$n % 3 == 2")
+    }.exhaustive
+}
+```
+
+when 절은 자바의 switch 문과 비슷하게 동작하지만 자바와는 다르게 각 섹션마다 break로 탈출하거나 값을 리턴하기 위해서 switch 문 바깥에서 변수를 선언할 필요가 없다.  
+
+첫 번째 함수와 같이 when 표현식이 값을 리턴하지 않는다면 코틀린은 when 식이 완벽하길 요구하지 않는다.  
+
+하지만 두 번째 식과 같이 무언가 할당을 해야하는 경우 완벽한 조건식이 필요해서 else가 필요하다. 개발자는 3 나머지 연산이 0,1,2 밖에 안나온다는 것을 알지만 말이다. ``.exhaustive`` 를 통해 할당을 받지 않는 경우에도 완벽한 when 절을 강제할 수가 있다.  
+
+<br/>
+
+### 정규표현식과 함께 replace 함수 사용하기
+
