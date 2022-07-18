@@ -1422,3 +1422,178 @@ when 절은 자바의 switch 문과 비슷하게 동작하지만 자바와는 �
 
 ### 정규표현식과 함께 replace 함수 사용하기
 
+```kotlin
+sertAll(
+    { assertEquals("one*two*", "one.two.".replace(".", "*")) },
+    { assertEquals("********", "one.two.".replace(".".toRegex(), "*")) }
+)
+```
+
+<br/>
+
+### 바이너리 문자열로 변환하고 되돌리기
+
+```kotlin
+val str = 42.toString(radix = 2)
+assertThat(str, `is`("101010"))
+
+val num = "101010".toInt(radix = 2)
+assertThat(num, `is`(42))
+```
+
+<Br/>
+
+### 실행 가능한 클래스 만들기
+
+```kotlin
+data class AstroResult(
+    val message: String,
+    val number: Number,
+    val people: List<AssignMent>
+)
+
+data class AssignMent(
+    val craft: String,
+    val name: String
+)
+
+class AstroRequest {
+    companion object {
+        private const val ASTRO_URL = "http://api.open-notify.org/astros.json"
+    }
+
+    operator fun invoke(): AstroResult {
+        val responseString = URL(ASTRO_URL).readText()
+        return Gson().fromJson(responseString, AstroResult::class.java)
+    }
+}
+
+@Test
+fun `invoke`() {
+    val request = AstroRequest()
+    val result = request()
+    println(result.message)
+    println(result.people)
+}
+```
+
+해당 api는 지금 이 순간에 우주에 있는 우주 비행사의 수를 나타내는 JSON 데이터를 리턴한다.  
+
+invoke 연산자 함수를 통해서 클래스 인스턴스를 바로 실행할 수 있다.  
+
+<Br/>
+
+### 경과 시간 측정하기
+
+```kotlin
+@Test
+fun `time`() {
+    fun doubleIt(x: Int): Int {
+        Thread.sleep(100L)
+        println("doubling $x with on thread ${Thread.currentThread().name}")
+        return x * 2
+    }
+
+    println("${Runtime.getRuntime().availableProcessors()} processors")
+    var time = measureTimeMillis {
+        IntStream.rangeClosed(1, 6)
+            .map { doubleIt(it) }
+            .sum()
+    }
+    println("Sequential stream took ${time}ms")
+
+    time = measureTimeMillis {
+        IntStream.rangeClosed(1, 6)
+            .parallel()
+            .map { doubleIt(it) }
+            .sum()
+    }
+
+    println("Parallel stream took ${time}ms")
+}
+```
+
+코드 블록이 실행되는데 걸린 시간을 구할 때 ``measureTimeMillis``, ``measureNanoMillis`` 를 사용한다.  
+
+<Br/>
+
+### 스레드 시작하기
+
+코드 블록을 동시적 스레드에서 실행하고 싶을 때, kotlin.concurrent 패키지의 thread 함수를 사용한다.  
+
+```kotlin
+(0..5).forEach { n ->
+    val sleepTime = Random.nextLong(range = 0..1000L)
+    thread {
+        Thread.sleep(sleepTime)
+        println("${Thread.currentThread().name} for $n after ${sleepTime}ms")
+    }
+}
+/*
+Thread-2 for 2 after 184ms
+Thread-5 for 5 after 207ms
+Thread-4 for 4 after 847ms
+Thread-0 for 0 after 917ms
+Thread-3 for 3 after 967ms
+Thread-1 for 1 after 980ms
+```
+
+<Br/>
+
+### TODO로 완성 강제하기
+
+```kotlin
+@Test
+fun `todo`() {
+    fun completeThis() {
+        TODO("finish this")
+    }
+    completeThis()
+}
+
+/*
+An operation is not implemented: finish this
+kotlin.NotImplementedError: An operation is not implemented: finish this
+```
+
+<br/>
+
+### 자바에게 예외 알리기
+
+코틀린 함수가 자바엣 ㅓ체크 예외차로 여겨지는 예외를 던지는 경우 자바에게 해당 예외가 체크 예외임을 알려 주고 싶을 때에 ``@Throws`` 어노테이션을 사용한다.  
+
+코틀린의 모든 예외는 언체크 예외다. 
+
+```kotlin
+// 코틀린 함수
+fun weHaveProblem() { 
+  throws IOException("File or resource not found")
+}
+
+// 자바에서 호출 시, IOException으로 충돌
+public static void doNothing() {
+  weHaveProblem();
+}
+
+// try-catch를 하게되면 컴파일이 안됨
+public static void useTryCatchBlock() {
+    try {
+      weHaveProblem();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+}
+
+// throws를 붙이면 컴파일은 되지만 불필요한 throws 절이라고 경고함
+public static void useThrowClause() throws IOException {
+  weHaveProblem();
+}
+
+// 코틀린 함수에 @Throws를 붙이면 바로 위 2가지 방법 모두 가능하게된다
+@Throws(IOException::class)
+fun weHaveProblem() {
+  throws IOException("File or resource not found")
+}
+```
+
+<br/>
