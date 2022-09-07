@@ -179,3 +179,123 @@ return 받은 ``RepeatStatus.FINISHED`` 값을 가지고 다시 ``RepeatTemplate
 ```
 
 그리고 ``repeatTemplate.setExceptionHandler();`` 구문을 통해 ``ExceptionHandler`` 를 등록해줄 수도 있다.  
+
+<br/>
+
+## FaultTolerant
+
+* 스프링 배치는 ``Job`` 실행 중에 요류가 발생할 경우 장애를 처리하기 위한 기능을 제공하며 이를 통해 복원력을 향상시킬 수 있다.
+* 오류가 발생해도 ``Step`` 이 즉시 종료되지 않고 ``Retry`` 혹은 ``Skip`` 기능을 활성화 함으로써 내결함성 서비스가 가능하도록 한다.
+* 프로그램의 내결함성을 위해 ``Skip`` 과 ``Retry`` 기능을 제공한다. 
+  * ``Skip``
+    * ``ItemReader`` / ``ItemProcessor`` / ``ItemWriter`` 에 적용할 수 있다.
+  * ``Retry``
+    * ``ItemProcessor`` / ``ItemWriter`` 에 적용할 수 있다.
+* ``FaultTolerant`` 구조는 청크 기반의 프로세스 기반위에 ``Skip`` 과 ``Retry`` 기능이 추가되어 재정의 되어 있다.
+
+```java
+public Step batchStep() {
+  return stepBuilderFactory.get("batchStep")
+     .<I,O>chunk(10)
+     .reader(ItemReader)
+     .writer(ItemWriter)
+     .faultTolerant()                          //내결함성 기능 활성화
+     .skip(Class<? extends Throwable> type)    //에외 발생 시 Skip 할 예외 타입 설정
+     .skipLimit(int skipLimit)                 //Skip 제한 횟수 설정
+     .skipPolicy(SkipPolicy skipPolicy)]       //Skip을 어떤 조건과 기준으로 적용 할 것인지 정책 설정
+     .noSkip(Class<? extends Throwable> type)  //예외 발생 시 Skip 하지 않을 예외 타입 설정
+     .retry(Class<? extends Throwable> type)   //예외 발생 시 Retry 할 예외 타입 설정
+     .retryLimit(int retryLimit)               //Retry 제한 횟수 설정
+     .retryPolicy(RetryPolicy retryPolicy)     //Retry를 어떤 조건과 기준으로 적용 할 것인지 정책 설정
+     .backOffPolicy(BackOffPolicy backOffPolicy) //다시 Retry 하기 까지의 지연시간(ms)을 설정
+     .noRetry(Class<? extends Throwable> type) //예외 발생 시 Retry 하지 않을 예외 타입 설정
+     .noRollback(Class<? extends Throwable> type) //예외 발생 시 Rollback 하지 않을 예외 타입 설정
+     .build();
+}
+```
+
+``FaultTolerant`` 를 사용하게 될 경우 구조 살짝 바뀌게 된다.  
+
+* ``SimpleStepBuilder`` 를 상속받는 ``FaultTolerantStepBuilder`` 
+* ``SimpleChunkProvider`` 를 상속받는 ``FaultTolerantChunkProvider`` 
+* ``SimpleChunkProvider`` 를 상속받는 ``FaultTolerantChunkProcessor`` 
+
+이렇게 ``FaultTolerant`` 사용을 위해 기존의 클래스를 상속받는 클래스를 사용하게 된다.  
+
+그리고 read, process, write을 하는 과정에서 예외가 발생하게 되면 skip count 만큼 예외를 건너뛰게 된다.  
+process와 write는 retry도 생각해야 한다. ``FaultTolerantChunkProcessor``는 ``RetryTemplate`` 의 ``execute()`` 메서드를 호출하는 방식을 사용하게 된다.(``ChunkProvider``가 ``RepeatTemplate`` 을 호출해서 진행하는 것 처럼)  
+이때 에외가 발생하게 되면 retry count 만큼 재시도를 하게되고 다시 예외가 발생하게 되면 skip 흐름으로 들어가 skip count 만큼 예외가 발생하게 된다.  
+
+이제 간단히 흐름을 살펴보겠다.  
+
+```java
+@Bean
+public Step step1() {
+    return stepBuilderFactory.get("step1")
+            .<String, String>chunk(5)
+            .reader(new ItemReader<String>() {
+                int i = 0;
+
+                @Override
+                public String read() throws Exception, UnexpectedInputException, ParseException, NonTransientResourceException {
+                    i++;
+                    if (i == 1) {
+                        throw new IllegalArgumentException("this exception should be skipped.");
+                    }
+                    return i > 3 ? null : "item" + i;
+                }
+            })
+            .processor(new ItemProcessor<String, String>() {
+                @Override
+                public String process(String item) throws Exception {
+                    throw new IllegalStateException("this exception should be retried.");
+                }
+            })
+            .writer(System.out::println)
+            .faultTolerant()							//faultTolerant 사용
+            .skip(IllegalArgumentException.class)
+            .skipLimit(2)
+            .retry(IllegalStateException.class)
+            .retryLimit(2)
+            .build();
+}
+```
+
+
+
+![image](https://user-images.githubusercontent.com/45073750/188872580-266b5455-c988-4e2a-9b6b-548940e5ccce.png)
+
+``faultTolerant()`` 호출을 하면 위와 같이 ``FaultTolerantStepBuilder`` 를 사용하게 된다.  
+
+![image](https://user-images.githubusercontent.com/45073750/188872933-871ad15d-eec5-43e1-b017-918cd0f0bebc.png)
+
+``build()`` 를 호출하게되면 ``FaultTolerantStepBuilder`` -> ``SimpleStepBuilder`` -> ``AbstractTaskletStepBuilder`` 의 흐름을 타며 ``build()`` 를 호출하게 된다. 
+
+![image](https://user-images.githubusercontent.com/45073750/188873319-e32936c6-79ea-4933-9f93-7dfedee03f49.png)
+
+``createTasklet()`` 호출하게 되면 ``FaultTolerantStepBuilder`` 에서 ``createChunkProvider()`` 와 ``createChunkProcessor()`` 를 호출하게되고,  
+
+![image](https://user-images.githubusercontent.com/45073750/188873963-b7c65102-7a02-4b09-b471-74e450f91dfe.png)
+
+해당 메서드에서 ``FaultTolerantChunkProvider`` 와 ``FaultTolerantChunkProcessor``를 생성해주는 것을 확인할 수가 있다.  
+
+reader에 ``i == 1`` 일 경우 exception 을 던지게끔 해놨었는데,  
+
+![image-20220907211512769](/Users/user/Library/Application Support/typora-user-images/image-20220907211512769.png)
+
+![image](https://user-images.githubusercontent.com/45073750/188876042-bdffab14-524d-4887-90e5-f4af4c640d7a.png)
+
+``FaultTolerantChunkProvider`` 의 ``read()`` 메서드를 보면 catch 구문에 ``shouldSkip`` 메서드를 이용해 skip 여부를 확인하는 구문이 있는 것을 확인할 수가 있다.  
+
+<img width="933" alt="image" src="https://user-images.githubusercontent.com/45073750/188878145-6709b330-ce6d-4da2-8cae-19ce2bc1615c.png">
+
+![image](https://user-images.githubusercontent.com/45073750/188877549-6f1ff41b-ea9c-413d-9392-f6abb2786fd7.png)
+
+그리고  ``FaultTolerantChunkProcessor`` 의 ``transform`` 메서드 내부에서 ``RetryTemplate`` 의 ``execute`` 를 호출하는 것을 확인할 수가 있다. 해당 구문 위쪽에 ``RetryCallback`` 가 정의되어 있다.  
+
+일단 크게 대략 이 정도의 흐름이고 흐름은 뒷 쪽에서 차차 살펴보도록 하겠다.  
+
+<Br/>
+
+
+
