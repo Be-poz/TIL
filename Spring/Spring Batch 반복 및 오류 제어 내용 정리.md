@@ -281,7 +281,7 @@ public Step step1() {
 
 reader에 ``i == 1`` 일 경우 exception 을 던지게끔 해놨었는데,  
 
-![image-20220907211512769](/Users/user/Library/Application Support/typora-user-images/image-20220907211512769.png)
+![image](https://user-images.githubusercontent.com/45073750/190651723-de0c9a10-64aa-4bbc-8ecb-5de10a8db741.png)
 
 ![image](https://user-images.githubusercontent.com/45073750/188876042-bdffab14-524d-4887-90e5-f4af4c640d7a.png)
 
@@ -296,6 +296,4 @@ reader에 ``i == 1`` 일 경우 exception 을 던지게끔 해놨었는데,
 일단 크게 대략 이 정도의 흐름이고 흐름은 뒷 쪽에서 차차 살펴보도록 하겠다.  
 
 <Br/>
-
-
 
