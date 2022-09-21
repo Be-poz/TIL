@@ -297,3 +297,19 @@ reader에 ``i == 1`` 일 경우 exception 을 던지게끔 해놨었는데,
 
 <Br/>
 
+## Skip
+
+* Skip은 데이터를 처리하는 동안 설정된 Exception이 발생했을 경우, 해당 데이터 처리를 건너뛰는 기능
+* ``ItemReader`` 과정에서 예외가 발생하면 해당 아이템만 스킵하고 진행
+* ``ItemProcessor`` 과정에서 예외가 발생하면 다시 Chunk의 처음으로 돌아가서 read 하게되고(이 때 read 할 item 들은 캐싱이 되어있음) 이전 process 과정에서 예외가 발생한 아이템은 체크가 되어있기 때문에 해당 아이템을 제외한 나머지 아이템들을 가지고 처리하게 됨
+* ``ItemWriter`` 과정에서 예외 발생 시 ``ItemProcessor``와 마찬가지로 처음부터 돌아가서 동작을 하고 예외가 발생한 아이템은 건너뛰게 된다.
+* Skip은 내부적으로 ``SkipPolicy`` 를 통해서 구현되어 있다.
+* 스킵 대상에 포함된 예외인지 여부, 스킵 카운터를 초과 했는지 여부에 따라 Skip 가능 여부를 판별한다.
+
+``Step`` -> ``RepeatTemplate`` -> ``Chunk`` -> ``Exception`` -> ``SkipPolicy`` -> ``Classifier`` -> skip?  
+위의 흐름을 따라간다. ``StepBuilderFactory`` 를 이용해 ``.skip(class)``, ``noSkip(class)``, ``skipLimit(count)`` 를 설정할 수 있고 이 경우에는 ``LimitCheckingItemSkipPolicy`` 가 생성되어 작동하게 된다.  
+
+내부적으로 ``SubclassClassifier<Throwable, Boolean>`` 을 가지고 있으며 특정 클래스에 대한 스킵 여부 boolean 값을 가지고 있으며 skip? 물음에 대하여 해당 boolean 값을 보거나 skipLimit을 체크한다.(true면 skip 한다)  
+
+
+
