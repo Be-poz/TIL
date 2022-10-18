@@ -311,5 +311,198 @@ reader에 ``i == 1`` 일 경우 exception 을 던지게끔 해놨었는데,
 
 내부적으로 ``SubclassClassifier<Throwable, Boolean>`` 을 가지고 있으며 특정 클래스에 대한 스킵 여부 boolean 값을 가지고 있으며 skip? 물음에 대하여 해당 boolean 값을 보거나 skipLimit을 체크한다.(true면 skip 한다)  
 
+```java
+@Bean
+public Step step1() {
+    return stepBuilderFactory.get("step1")
+                             .<String, String>chunk(5)
+                             .reader(new ItemReader<String>() {
+                                 int i = 0;
 
+                                 @Override
+                                 public String read() throws Exception, UnexpectedInputException, ParseException, NonTransientResourceException {
+                                     i++;
+                                     if (i == 3) {
+                                         System.out.println("error occurred item: " + i);
+                                         throw new SkippableException("skip"); //커스텀 예외
+                                     }
+                                     System.out.println("ItemReader: " + i);
+                                     return i > 20 ? null : String.valueOf(i);
+                                 }
+                             })
+                             .processor(itemProcess())
+                             .writer(itemWriter())
+                             .faultTolerant()
+                             .skip(SkippableException.class)
+                             .skipLimit(2)
+                             .build();
+}
+
+private ItemWriter<? super String> itemWriter() {
+    return new SkipItemWriter();
+}
+
+private ItemProcessor<? super String, String> itemProcess() {
+    return new SkipItemProcessor();
+}
+
+---
+public class SkipItemProcessor implements ItemProcessor<String, String> {
+    
+    @Override
+    public String process(String item) throws Exception {
+        if (item.equals("6") || item.equals("7")) {
+            System.out.println("error occurred item: " + item);
+            throw new SkippableException("Process failed cnt :");
+        }
+
+        System.out.println("ItemProcess : " + item);
+        return String.valueOf(Integer.parseInt(item) * -1);
+    }
+}
+
+---
+  
+public class SkipItemWriter implements ItemWriter<String> {
+
+    @Override
+    public void write(List<? extends String> items) throws Exception {
+
+        for (String item : items) {
+            if (item.equals("-12")) {
+                System.out.println("error occurred item: " + item);
+                throw new SkippableException("Write failed cnt : ");
+            }
+            System.out.println("ItemWriter: " + item);
+        }
+    }
+}
+```
+
+위의 코드를 돌렸을 때 결과는 다음과 같이 나온다.  
+
+```text
+ItemReader: 1
+ItemReader: 2
+error occurred item: 3					// 3에서 첫 에러 발생
+ItemReader: 4
+ItemReader: 5
+ItemReader: 6
+ItemProcess : 1
+ItemProcess : 2
+ItemProcess : 4
+ItemProcess : 5
+error occurred item: 6						// 6에서 두번째 에러 발생
+ItemProcess : 1										// 해당 chunk 다시 시작, 에러난 item은 따로 체킹하므로 6은 pass
+ItemProcess : 2
+ItemProcess : 4
+ItemProcess : 5
+ItemWriter: -1
+ItemWriter: -2
+ItemWriter: -4
+ItemWriter: -5
+ItemReader: 7
+ItemReader: 8
+ItemReader: 9
+ItemReader: 10
+ItemReader: 11
+error occurred item: 7					// Processor에서 7 만나자마자 에러 발생, 3번째 에러이고 limit 넘었으므로 종료
+```
+
+이제 limit을 3으로 설정하고 돌리면 다음과 같이 나오게 된다.  
+
+```text
+ItemReader: 1
+ItemReader: 2
+error occurred item: 3
+ItemReader: 4
+ItemReader: 5
+ItemReader: 6
+ItemProcess : 1
+ItemProcess : 2
+ItemProcess : 4
+ItemProcess : 5
+error occurred item: 6
+ItemProcess : 1
+ItemProcess : 2
+ItemProcess : 4
+ItemProcess : 5
+ItemWriter: -1
+ItemWriter: -2
+ItemWriter: -4
+ItemWriter: -5
+ItemReader: 7
+ItemReader: 8
+ItemReader: 9
+ItemReader: 10
+ItemReader: 11
+error occurred item: 7
+ItemProcess : 8
+ItemProcess : 9
+ItemProcess : 10
+ItemProcess : 11
+ItemWriter: -8
+ItemWriter: -9
+ItemWriter: -10
+ItemWriter: -11
+ItemReader: 12
+ItemReader: 13
+ItemReader: 14
+ItemReader: 15
+ItemReader: 16
+ItemProcess : 12
+ItemProcess : 13
+ItemProcess : 14
+ItemProcess : 15
+ItemProcess : 16
+error occurred item: -12
+ItemProcess : 12
+error occurred item: -12
+```
+
+내부 코드 흐름을 간단히 살펴보자면,  
+
+<img width="482" alt="image" src="https://user-images.githubusercontent.com/45073750/196469919-21e09ad6-b2c5-455e-8e9c-a770d061b6db.png">
+
+``.faultTolerant()`` 를 입력하면 위의 FaultTolerant 파트에서 언급했듯이 ``SimpleStepBuilder`` 대신 ``FaultTolerantStepBuilder`` 를 사용하게 된다. 
+
+<img width="861" alt="image" src="https://user-images.githubusercontent.com/45073750/196470325-2d354f16-a477-4a91-9290-3ab4c4df22d4.png">
+
+``.skip()`` 을 통해 스킵될 예외들을 추가해주게 되고,  
+
+<img width="977" alt="image" src="https://user-images.githubusercontent.com/45073750/196470505-3a7d08ef-d347-4b31-93bb-55296a8baf65.png">
+
+<img width="928" alt="image" src="https://user-images.githubusercontent.com/45073750/196470554-55f79bfc-5973-4412-824e-92c27d99c6a0.png">
+
+``FaultTolerantStepBuilder``에서 ``FaultTolerantChunkProvider`` 를 만드는 과정에서 ``SkipPolicy``를 생성하게되고 내가 설정한 ``skipLimit``과 skip할 exception에 대한 정보가 들어가있는 map이 생성자 파라미터로 들어가게 된다. 위의 코드에서는 따로 ``SkipPolicy``를 설정해주지 않았으므로 default 값인 ``LimitCheckingItemSkipPolicy`` 를 이용한 것이다. 
+
+<img width="668" alt="image" src="https://user-images.githubusercontent.com/45073750/196471289-856325ef-3eea-4978-b108-92a3361350b9.png">
+
+그리고 이 ``SkipPolicy`` 에는 ``shouldSkip`` 메서드가 존재하는데(위의 코드는 ``LimitCheckingItemSkipPolicy`` 의 ``shouldSkip`` 메서드이다)  
+
+<img width="860" alt="image" src="https://user-images.githubusercontent.com/45073750/196471506-6e238be6-d627-468a-889e-47ccd3d51400.png">
+
+``FaultTolerantChunkProvider`` 의 ``read`` 메서드에서 ``shouldSkip`` 을 호출하는 것을 확인할 수가 있다.  
+
+```java
+.skipPolicy(limitCheckingItemSkipPolicy())
+  
+---
+  
+@Bean
+public SkipPolicy limitCheckingItemSkipPolicy() {
+    Map<Class<? extends Throwable>, Boolean> exceptionClass = new HashMap<>();
+    exceptionClass.put(SkippableException.class, true);
+
+    return new LimitCheckingItemSkipPolicy(3, exceptionClass);
+}
+```
+
+위와 같이 ``SkipPolicy``를 따로 정해서 ``.skip()``, ``.skipLimit()`` 대신 넣어줄 수도 있다. 물론 ``SkipPolicy`` 인터페이스를 커스텀하게 구현해서 넣어도 된다.  
+
+<img width="541" alt="image" src="https://user-images.githubusercontent.com/45073750/196473296-1ea7b459-4b07-423e-a55c-724d15a36abe.png">
+
+스프링 배치가 기본적으로 제공하는 ``SkipPolicy``는 위와 같다.  
+
+<Br/>
 
