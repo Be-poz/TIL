@@ -393,7 +393,7 @@ ItemProcess : 2
 ItemProcess : 4
 ItemProcess : 5
 error occurred item: 6						// 6에서 두번째 에러 발생
-ItemProcess : 1										// 해당 chunk 다시 시작, 에러난 item은 따로 체킹하므로 6은 pass
+ItemProcess : 1										// 해당 chunk 다시 시작, 에러난 item인 6은 pass
 ItemProcess : 2
 ItemProcess : 4
 ItemProcess : 5
@@ -483,6 +483,7 @@ error occurred item: -12
 <img width="860" alt="image" src="https://user-images.githubusercontent.com/45073750/196471506-6e238be6-d627-468a-889e-47ccd3d51400.png">
 
 ``FaultTolerantChunkProvider`` 의 ``read`` 메서드에서 ``shouldSkip`` 을 호출하는 것을 확인할 수가 있다.  
+위의 흐름은  ``ItemWriter``의 경우의 흐름이고 ``ItemProcessor``와 ``ItemWriter``는 조금 다르다. 이는 ``Retry`` 파트에서 살펴보겠다.  
 
 ```java
 .skipPolicy(limitCheckingItemSkipPolicy())
@@ -610,7 +611,7 @@ public class RetryableException extends Exception {
 
 <img width="1093" alt="image" src="https://user-images.githubusercontent.com/45073750/197386255-e5207f08-cc72-4cbd-9700-a7bd5d0536d7.png">
 
-``ChunkOrientedTasklet``에서 호출한 ``FaultTolerantChunkProcessor`` 에서 아이템 수만큼 for문을 돌면서 ``RetryCallback``과 ``RecoveryCallback``이 생성되고 ``RetryTemplate`` 에서 이를 가지고 수행하게 된다. 하이라이트 된 코드의 ``DefaultRetryState``은 ``RetryContext``를 찾을 때 필요한 정보를 담고 있는 객체고, 밑의 ``doExecute()`` 메서드에서 사용하게 된다.
+``ChunkOrientedTasklet``에서 호출한 ``FaultTolerantChunkProcessor`` 에서 아이템 수만큼 for문을 돌면서 ``RetryCallback``과 ``RecoveryCallback``이 생성되고 ``RetryTemplate`` 에서 이를 가지고 수행하게 된다. 즉 아이템마다 ``RetryCallback``과 ``RecoveryCallback`` 을 가지게 된다는 것이다. 그리고 이 아이템마다 retry를 따로 측정하기 때문에 이 내용은 꼭 기억하고 있자. 하이라이트 된 코드의 ``DefaultRetryState``은 아이템의 retry정보가 담긴 ``RetryContext``를 찾을 때 필요한 정보를 담고 있는 객체고 현재 아이템 값으로 key를 생성해 넣어주고 이 객체는 밑의 ``doExecute()`` 메서드에서 사용하게 된다.
 
 <img width="1252" alt="image" src="https://user-images.githubusercontent.com/45073750/197387193-9aca97d6-f280-45c5-a8b3-cbd0b7636a07.png">
 
@@ -630,7 +631,8 @@ public class RetryableException extends Exception {
 
 <img width="837" alt="image" src="https://user-images.githubusercontent.com/45073750/197388861-71fe3e38-7cb8-4dc8-a252-381e743770b3.png">
 
-``RecoveryCallback`` 에서는 ``Skip``에 대한 여부가 나오게 된다. ``Skip`` 까지 설정해두었다면 해당 아이템을 스킵처리하고 다시 돌게될 것이다.  
+``RecoveryCallback`` 에서는 ``Skip``에 대한 여부가 나오게 된다. ``Skip`` 까지 설정해두었다면 해당 아이템을 item iterator에서 remove하고  다시 돌게될 것이다.  
+이 내용은 밑에서 한 번 더 다루겠다.
 
 <img width="932" alt="image" src="https://user-images.githubusercontent.com/45073750/197387697-03a7b3bb-b688-4816-9556-6894a4e8de2f.png">
 
@@ -643,3 +645,103 @@ public class RetryableException extends Exception {
 ``Skip``의 경우에는 해당 아이템을 체크해두고 다시 chunk로 돌아가서 해당 아이템을 제외하고 재시도한다면,  
 ``Retry``는 ``Skip``과 같은 데이터의 조작없이 다시 reader부터 처음부터 처리하게된다.  
 
+```java
+@Override
+public String process(String item) throws Exception {
+    System.out.println("item process: " + item);
+    if (item.equals("2") || item.equals("3")) {
+        cnt++;
+        System.out.println("processor occurred! failed cnt: " + cnt);
+        throw new RetryableException();
+    }
+    return item;
+}
+```
+
+``RetryItemProcessor`` 의 내용을 다음과 같이 수정하고 돌리면 다음과 같은 결과가 출력이 된다.  
+
+```text
+item process: 0
+item process: 1
+item process: 2
+processor occurred! failed cnt: 1
+item process: 0
+item process: 1
+item process: 2
+processor occurred! failed cnt: 2
+item process: 0
+item process: 1
+종료...
+```
+
+``Skip``은 예외가 발생한 아이템을 체크하고 건너뛰었지만 ``Retry``는 청크의 처음부터 다시 돌아가기 때문에 위와같은 상황이 발생하게된다.  ``Skip`` 까지 추가하고 살펴보겠다.  
+
+```java
+ .retry(RetryableException.class)
+ .retryLimit(2)
+```
+
+``Skip``을 붙이고 돌리면 정상적으로 마무리가 된다. 출력결과는 다음과 같다.  
+
+```java
+item process: 0
+item process: 1
+item process: 2
+processor occurred! failed cnt: 1
+item process: 0
+item process: 1
+item process: 2
+processor occurred! failed cnt: 2
+item process: 0
+item process: 1
+item process: 3
+processor occurred! failed cnt: 3
+item process: 0
+item process: 1
+item process: 3
+processor occurred! failed cnt: 4
+item process: 0
+item process: 1
+item process: 4
+0
+1
+4
+item process: 5
+item process: 6
+item process: 7
+item process: 8
+item process: 9
+5
+6
+7
+8
+9
+```
+
+예외 2번이 터지고 이후  ``RecoveryCallback`` 콜백 메서드를 돌면서 예외가 터진 아이템을 skip 하게 된다. 이때 ``ItemProcessor`` 에서는  ``Skip`` 시에 해당 아이템을  Item Iterator 에서 remove 하고 진행하게 된다.  
+
+이후 다시 돌면서 아이템 '3' 을 마주하게되고 ``RetryCallback``과 ``RecoveryCallback``은 앞서 말한 것 처럼 아이템마다 할당되기 때문에 다시 retry 2번을 거치고 skip 흐름에서 item remove를 하고 이후 진행하게된다.  
+
+<img width="853" alt="image" src="https://user-images.githubusercontent.com/45073750/197407179-d9a32ec4-9eba-4efe-8c86-e9d7a0720151.png">
+
+<br/>
+
+마지막으로 ``ItemReader``, ``ItemWriter``, ``ItemProcessor``의 전체 흐름 이미지로 마무리하도록 하겠다.  
+
+``ItemReader`` 
+
+![image](https://user-images.githubusercontent.com/45073750/197408137-64c4ae9c-df15-4c26-b003-5ee4504cd4ea.png)
+
+``ItemProcessor``
+
+![image](https://user-images.githubusercontent.com/45073750/197408172-8b40b11a-341f-4115-9fd9-94c881ed95c4.png)
+
+``ItemWriter``
+
+![image](https://user-images.githubusercontent.com/45073750/197408195-97171047-17c4-4892-b9fc-1bdcd090e11d.png)
+
+---
+
+### REFERENCE
+
+정수원님 스프링 배치 강의
