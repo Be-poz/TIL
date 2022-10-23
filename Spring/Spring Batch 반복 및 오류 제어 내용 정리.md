@@ -506,3 +506,140 @@ public SkipPolicy limitCheckingItemSkipPolicy() {
 
 <Br/>
 
+## Retry
+
+* Retry는 ItemProcess, ItemWriter에서 설정된  Exception이 발생했을 경우, 지정한 정책에 따라 데이터 처리를 재시도하는 기능
+* Skip과 마찬가지로 Retry를 함으로써, 배치수행의 빈번한 실패를 줄일 수 있게 함
+
+``RepeatOperations``와 ``RepeatTemplate`` 이 있는 것 처럼 Retry 또한 ``RetryOperations``와 ``RetryTemplate``이 있고 내부적으로  ``RetryCallback``와 ``RecoveryCallback`` 을 수행하게된다.  
+
+대략적인 흐름은 ``Step`` -> ``RepeatTemplate`` -> ``RetryTemplate`` -> ``RetryCallback``/``RecoveryCallback`` -> ``Chunk``  
+-> ``Exception`` -> ``RetryPolicy`` -> ``BackOffPolicy``/``Step``  와 같다.  
+
+``RetryTemplate`` 에서 retry 할 예외인지, retryCount는 limit을 넘었는지 여부에 따라 ``RetryCallback`` 과 ``RecoveryCallback`` 으로 분기를 타게되고, ``RetryPolicy`` 에서도 마찬가지로 판단 후에 ``Step`` 반복문 처음부터 다시 시작할 것인지 아니면 ``Step``을 종료할 것인지 판단하게 된다.  
+
+사용방법은 ``Skip``과 비슷하다. ``FaultTolerant`` 설명할 때 있었던 예시코드인데 다시보고 파악해보자.  
+
+```java
+public Step batchStep() {
+  return stepBuilderFactory.get("batchStep")
+     .<I,O>chunk(10)
+     .reader(ItemReader)
+     .writer(ItemWriter)
+     .faultTolerant()                          //내결함성 기능 활성화
+     .skip(Class<? extends Throwable> type)    //에외 발생 시 Skip 할 예외 타입 설정
+     .skipLimit(int skipLimit)                 //Skip 제한 횟수 설정
+     .skipPolicy(SkipPolicy skipPolicy)]       //Skip을 어떤 조건과 기준으로 적용 할 것인지 정책 설정
+     .noSkip(Class<? extends Throwable> type)  //예외 발생 시 Skip 하지 않을 예외 타입 설정
+     .retry(Class<? extends Throwable> type)   //예외 발생 시 Retry 할 예외 타입 설정
+     .retryLimit(int retryLimit)               //Retry 제한 횟수 설정
+     .retryPolicy(RetryPolicy retryPolicy)     //Retry를 어떤 조건과 기준으로 적용 할 것인지 정책 설정
+     .backOffPolicy(BackOffPolicy backOffPolicy) //다시 Retry 하기 까지의 지연시간(ms)을 설정
+     .noRetry(Class<? extends Throwable> type) //예외 발생 시 Retry 하지 않을 예외 타입 설정
+     .noRollback(Class<? extends Throwable> type) //예외 발생 시 Rollback 하지 않을 예외 타입 설정
+     .build();
+}
+```
+
+스프링 배치에서 기본적으로 제공하는  ``RetryPolicy``는 다음과 같다.  
+
+<img width="726" alt="image" src="https://user-images.githubusercontent.com/45073750/197381934-b6e5c69e-c987-4739-bb42-0a6f70a68c4b.png">
+
+default는  ``SimpleRetryPolicy``로 내가 설정한 retry 할 예외들, retryLimit 등이 파라미터로 들어가게 된다.  
+
+이제 코드를 살펴보면서 흐름을 파악해보겠다. 일단 기본 코드는 다음과 같이 생성해놓았다.  
+
+```java
+@Bean
+public Step step1() {
+    return stepBuilderFactory.get("step1")
+                             .<String, String>chunk(5)
+                             .reader(reader())
+                             .processor(processor())
+                             .writer(items -> items.forEach(System.out::println))
+                             .faultTolerant()
+                             .retry(RetryableException.class)
+                             .retryLimit(2)
+                             .build();
+}
+
+@Bean
+public ListItemReader<String> reader() {
+    List<String> items = new ArrayList<>();
+    for (int i = 0; i < 30; i++) {
+        items.add(String.valueOf(i));
+    }
+    return new ListItemReader<>(items);
+}
+
+@Bean
+public ItemProcessor<? super String, String> processor() {
+    return new RetryItemProcessor();
+}
+
+---
+  
+public class RetryItemProcessor implements ItemProcessor<String, String> {
+
+    private int cnt = 0;
+
+    @Override
+    public String process(String item) throws Exception {
+        cnt++;
+        throw new RetryableException();
+    }
+}
+
+---
+  
+public class RetryableException extends Exception {
+
+    public RetryableException() {
+        super();
+    }
+
+    public RetryableException(String message) {
+        super(message);
+    }
+}
+```
+
+이제 실행시켜보면서 살펴보겠다.  
+
+<img width="933" alt="image" src="https://user-images.githubusercontent.com/45073750/197386130-577c662f-3efb-4b50-8eec-64c12ce95482.png">
+
+<img width="1093" alt="image" src="https://user-images.githubusercontent.com/45073750/197386255-e5207f08-cc72-4cbd-9700-a7bd5d0536d7.png">
+
+``ChunkOrientedTasklet``에서 호출한 ``FaultTolerantChunkProcessor`` 에서 아이템 수만큼 for문을 돌면서 ``RetryCallback``과 ``RecoveryCallback``이 생성되고 ``RetryTemplate`` 에서 이를 가지고 수행하게 된다. 하이라이트 된 코드의 ``DefaultRetryState``은 ``RetryContext``를 찾을 때 필요한 정보를 담고 있는 객체고, 밑의 ``doExecute()`` 메서드에서 사용하게 된다.
+
+<img width="1252" alt="image" src="https://user-images.githubusercontent.com/45073750/197387193-9aca97d6-f280-45c5-a8b3-cbd0b7636a07.png">
+
+<img width="1598" alt="image" src="https://user-images.githubusercontent.com/45073750/197387320-3290c2cf-361d-46a1-ac72-e53252626b40.png">
+
+``doExecute()`` 메서드 내에서 retry 할 수 있는지 체크를 하고  while문을 돌게되는데 이때 위에서 ``doExecute()`` 메서드 3번째 코드라인에서 생성된 context를 이용하게 된다. 이 context는 몇 번의 시도를 했는지, 최대 limit은 몇인지 등에 대한 상태정보를 가지고 있다. 해당 정보를 이용해 retry 할 수 있는지 체크하게되는 것이다.  
+
+그리고 ``retryCallback.doWithRetry(context)`` 를 호출하고 이는 아까 정의되어있던 ``RetryCallback`` 메서드를 호출하게되고 내부적으로 ``doProcess``를 호출하고 결국 ``ItemProcessor`` 로직을 타게된다.  
+
+<img width="590" alt="image" src="https://user-images.githubusercontent.com/45073750/197387566-c7de224c-d88c-4714-81c9-a1bae8fb998d.png">
+
+예외가 던져지면,  
+
+<img width="859" alt="image" src="https://user-images.githubusercontent.com/45073750/197387633-d0c41ad2-b468-421a-9970-2fbb08297258.png">
+
+``RetryCallback``에서  exception catch를 하게되고, 예외가 발생하게되면 이번에는 ``RecoveryCallback`` 의 흐름을 타게된다.  
+
+<img width="837" alt="image" src="https://user-images.githubusercontent.com/45073750/197388861-71fe3e38-7cb8-4dc8-a252-381e743770b3.png">
+
+``RecoveryCallback`` 에서는 ``Skip``에 대한 여부가 나오게 된다. ``Skip`` 까지 설정해두었다면 해당 아이템을 스킵처리하고 다시 돌게될 것이다.  
+
+<img width="932" alt="image" src="https://user-images.githubusercontent.com/45073750/197387697-03a7b3bb-b688-4816-9556-6894a4e8de2f.png">
+
+``RetryTemplate``에서도 마찬가지로 로  catch 흐름을 타게된다. retry 할 수 있는 여부로 판단하여 ``BackOffPolicy`` 흐름을 타야하는지 판단한다.  
+
+<img width="886" alt="image" src="https://user-images.githubusercontent.com/45073750/197387783-a5297d1f-a153-4822-8ae1-b4f49e0167ff.png">
+
+이후 다시 ``Step``의 처음부터 시작하게된다. (위의 코드는 ``ChunkOrientedTasklet`` 의 ``execute()``)  
+
+``Skip``의 경우에는 해당 아이템을 체크해두고 다시 chunk로 돌아가서 해당 아이템을 제외하고 재시도한다면,  
+``Retry``는 ``Skip``과 같은 데이터의 조작없이 다시 reader부터 처음부터 처리하게된다.  
+
