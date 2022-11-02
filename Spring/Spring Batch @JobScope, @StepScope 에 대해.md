@@ -1,4 +1,4 @@
-# @JobScope, @StepScope 에 대해
+# Spring Batch @JobScope, @StepScope 에 대해
 
 * 스프링 빈에 scope 가 있는 것 처럼 Job과 Step에도 빈 생성과 관련한 scope이다.  
 * 해당 스코프가 선언되면 빈 생성이 어플리케이션 구동시점이 아니라 빈의 실행시점에 이루어지게 된다.
