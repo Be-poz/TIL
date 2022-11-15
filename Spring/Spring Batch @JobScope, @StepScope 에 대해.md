@@ -20,4 +20,59 @@
 ### @StepScope
 
 * Tasklet이나 ItemReader, ItemWriter, ItemProcessor 선언문에 정의
-* @Value: jobPArameter, jobExecutionContext, stepExecutionContext 사용 가능
+* @Value: jobParameter, jobExecutionContext, stepExecutionContext 사용 가능
+
+<Br/>
+
+```java
+    @Bean
+    public Job job() throws RetryableException {
+        return jobBuilderFactory.get("Job")
+                                .incrementer(new RunIdIncrementer())
+                                .start(step2())
+                                .build();
+    }
+
+    @Bean
+    @JobScope
+    public Step step1(@Value("#{jobParameters['name']}") String name) {
+        System.out.println("jobParameter is: " + name);
+        return stepBuilderFactory.get("step1")
+                                 .tasklet(((contribution, chunkContext) -> {
+
+                                     return RepeatStatus.FINISHED;
+                                 }))
+                                 .build();
+    }
+
+    @Bean
+    public Step step2() {
+        return stepBuilderFactory.get("step2")
+                                 .chunk(3)
+                                 .reader(itemReader(null))
+                                 .writer(new ItemWriter<Object>() {
+                                     @Override
+                                     public void write(List<?> items) {
+                                         items.forEach(System.out::print);
+                                     }
+                                 })
+                                 .build();
+    }
+
+    @Bean
+    @StepScope
+    public ItemReader<Integer> itemReader(@Value("#{jobParameters['name']}") String name) {
+        System.out.println("jobParameter with using stepScope: " + name);
+        return new ListItemReader(List.of(1, 2, 3));
+    }
+```
+
+위와 같이 사용을 하면된다. 위에서도 언급했지만 프록시를 통한 호출을 하기 때문에 어플리케이션 구동 시점에 빈이 생성이 되는 것이 아니라 호출이 될 때에 생성된다.  
+
+위의 Job을 ``name=kangggggg`` jobParameter를 주고 돌려보면 ``jobParamer is: kangggggg``, ``jobParameter with using stepScope: kangggggg`` 로 잘 출력되는 것을 확인할 수가 있다.  
+
+<Br/>
+
+### REFERENCE
+
+정수원님 스프링 배치 강의
