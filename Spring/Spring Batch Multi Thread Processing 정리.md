@@ -71,3 +71,39 @@ public AsyncItemWriter asyncItemWriter() {
 
 ## Multi-threaded Step
 
+* Step 내에서 멀티 스레드로 Chunk 기반 처리가 이루어지는 구조
+* ``TaskExecutorRepeatTemplate`` 이 반복자로 사용되며 설정한 개수(throttleLimit) 만큼의 스레드를 생성하여 수행한다
+
+<img width="1721" alt="image" src="https://user-images.githubusercontent.com/45073750/211808692-6de956cc-9f94-46a4-82d6-496ace064d53.png">
+
+<img width="1850" alt="image" src="https://user-images.githubusercontent.com/45073750/211813819-870b2729-ab27-45c8-ae85-e1ac2acf4fcf.png">
+
+```java
+@Bean
+public Step step() throws Exception {
+    return stepBuilderFactory.get("step1")
+            .<Customer, Customer> chunk(100)
+            .reader(pagingItemReader())
+            .processor((ItemProcessor<? super Customer, ? extends Customer>) item -> item)
+            .writer(customItemWriter())
+            .taskExecutor(taskExecutor())
+            .build();
+}
+
+@Bean
+public TaskExecutor taskExecutor() {
+    ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
+    taskExecutor.setCorePoolSize(4);
+    taskExecutor.setMaxPoolSize(8);
+    taskExecutor.setThreadNamePrefix("async-thread");
+
+    return taskExecutor;
+}
+```
+
+``taskExecutor``를 지정하지않으면 default로는 ``SyncTaskExecutor``가 지정이 된다. 위 코드에서는 ``ThreadPoolTaskExecutor``를 지정해서 청크별로 비동기적으로 동작하게끔 만들었다. 이때, ``ItemReader``는 동기화가 보장되게끔 만들어야 한다. ``JdbcPagingItemReader``나 ``JpaPagingItemReader``를 사용하면 이를 보장해준다.  
+
+<br/>
+
+## Parallel Steps
+
