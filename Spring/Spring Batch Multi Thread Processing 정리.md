@@ -107,3 +107,134 @@ public TaskExecutor taskExecutor() {
 
 ## Parallel Steps
 
+* SplitState 를 사용해서 여러 개의 Flow 들을 병렬적으로 실행하는 구조
+* 실행히 다 완료된 후 FlowExecutionStatus 결과들을 취합해서 다음 단계 결정을 한다
+
+<img width="1852" alt="image" src="https://user-images.githubusercontent.com/45073750/214572985-4bbe5071-5849-4778-9e79-0251b32de5af.png">
+
+```java
+public Job job() {
+  	return jobBuilderFactory.get("job")
+      								.start(flow1())		//flow1 생성
+      								.split(TaskExecutor).add(flow2(), flow3()) 
+      								//flow2, flow3 생성 후 합침, taskExecutor에서 flow 개수만큼 스레드 생성하여 실행
+      								.next(flow4())
+      								//위의 split이 완료된 후 실행
+      								.end()
+      								.build();
+}
+```
+
+실제 코드로 살펴보자
+
+```java
+public Job job() throws RetryableException {
+    return jobBuilderFactory.get("Job")
+                            .incrementer(new RunIdIncrementer())
+                            .start(flow1())
+                            .split(taskExecutor()).add(flow2())
+                            .end()
+                            .build();
+}
+
+@Bean
+public Flow flow1() {
+    TaskletStep step1 = stepBuilderFactory.get("step1")
+                                         .tasklet(tasklet())
+                                         .build();
+
+    return new FlowBuilder<Flow>("flow1")
+            .start(step1)
+            .build();
+}
+
+@Bean
+public Flow flow2() {
+    TaskletStep step2 = stepBuilderFactory.get("step2")
+                                         .tasklet(tasklet())
+                                         .build();
+
+    TaskletStep step3 = stepBuilderFactory.get("step3")
+                                         .tasklet(tasklet())
+                                         .build();
+
+    return new FlowBuilder<Flow>("flow2")
+            .start(step2)
+            .next(step3)
+            .build();
+}
+
+@Bean
+public Tasklet tasklet() {
+    return new CustomTasklet();
+}
+
+public class CustomTasklet implements Tasklet {
+
+    private long sum;
+
+    @Override
+    public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
+        for (int i = 0; i < 100000000; i++) {
+            sum++;
+        }
+        System.out.printf("%s has been executed on thread %s\n", chunkContext.getStepContext().getStepName(), Thread.currentThread().getName());
+        System.out.println("sum: " + sum);
+        return RepeatStatus.FINISHED;
+    }
+}
+```
+
+결과는 다음과 같이 나왔다.
+
+<img width="1061" alt="image" src="https://user-images.githubusercontent.com/45073750/214584493-f56f498b-8a52-4e63-a2ae-80d3ba73234b.png">
+
+flow1과 flow2가 병렬로 돌아가는 것을 확인할 수 있고, flow2 내부에서 step2가 끝난 후에 step3를 실행하게끔 하였기 때문에 step2가 끝난 후에 step3이 돌아간 것을 확인할 수가 있었다.  
+
+sum값이 1억, 2억, 3억 이렇게 찍혀야 되는데 이상한 값으로 찍힌 이유는 ``CustomTasklet``을 빈 등록하여서 싱글턴 객체가 되었는데 내부 공유 변수가 있어 데이터 동기화 문제가 일어난 것이다. 빈 등록을 해제해주어 싱글턴으로 사용을 하지 말던가 아니면 동기화 처리를 해주면 된다.  
+
+```java
+public class CustomTasklet implements Tasklet {
+
+    private long sum;
+    private Object object = new Object();
+
+    @Override
+    public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
+        synchronized (object){
+            for (int i = 0; i < 100000000; i++) {
+                sum++;
+            }
+            System.out.printf("%s has been executed on thread %s\n", chunkContext.getStepContext().getStepName(), Thread.currentThread().getName());
+            System.out.println("sum: " + sum);
+        }
+        return RepeatStatus.FINISHED;
+    }
+}
+```
+
+간단히 동기화 처리를 해주면 정상적으로 sum이 찍히는 것을 확인할 수가 있다. 하지만, ``synchronized``를 사용함으로써 처리 속도가 그만큼 떨어지게 된다.  
+
+```java
+@Bean
+public Job job() throws RetryableException {
+    return jobBuilderFactory.get("Job")
+                            .incrementer(new RunIdIncrementer())
+                            .start(flow1())
+                            .split(taskExecutor()).add(flow2())
+                            .next(flow2())
+                            .end()
+                            .build();
+}
+```
+
+이번에는 split이후에 next를 하나 더 넣어서  flow2를 다시 실행해보겠다.  
+
+<img width="1741" alt="image" src="https://user-images.githubusercontent.com/45073750/214585558-1a35b79e-823d-4990-9335-644bcedde409.png">
+
+쓰레드명을 살펴보면 next 단계에서 실행된 flow2는 메인 쓰레드로 처리된 것을 확인할 수가 있다. split 까지 병렬처리를 하다가 병렬 처리하던 쓰레드를 모두 완료한 후에 next로 넘어갔고 여기서 부터는 동기로 이루어지니 메인 쓰레드가 처리한 것으로 유추할 수가 있다.  
+
+<br/>
+
+## Partitioning
+
