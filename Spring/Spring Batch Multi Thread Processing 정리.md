@@ -238,3 +238,41 @@ public Job job() throws RetryableException {
 
 ## Partitioning
 
+* MasterStep이 SlaveStep을 실행시키는 구조
+* SlaveStep은 각 스레드에 의해 독립적으로 실행이 됨
+* SlaveStep은 독립적인 StepExecution 파라미터 환경을 구성함
+* SlaveStep은 ItemReader / ItemProcessor / ItemWriter 등을 가지고 동작하며 직업을 독립적으로 병렬 처리함
+* MasterStep은 PartitionStep이며 SlaveStep은 TaskletStep, FlowStep 등이 올 수 있음
+
+
+
+<img width="660" alt="image" src="https://user-images.githubusercontent.com/45073750/217282367-e5f0af2a-e329-46f6-b639-f776062693f6.png">
+
+주요 클래스는 다음과 같다.
+
+* PartitionStep
+  * 파티셔닝 기능을 수행하는 Step 구현체
+  * 파티셔닝을 수행 후 StepExecutionAggregator를 사용해서 StepExecution의 정보를 최종 집계한다
+* PartitionHandler
+  * PartitionStep에 의해 호출되며 스레드를 생성해서 WorkStep을 병렬로 실행한다
+  * WorkStep에서 사용할 StepExecution 생성은 StepExecutionSplitter와 Partitioner에게 위임한다
+  * WorkStep을 병렬로 실행 후 최종 결과를 담은 StepExecution을 PartitionStep에 반환한다
+* StepExecutionSplitter
+  * WorkStep에서 사용할 StepExecution을 gridSize 만큼 생성한다 (gridSize가 곧 스레드의 수)
+  * Partitioner를 통해 ExecutionContext를 얻어서 StepExecution에 매핑한다
+* Partitioner
+  * StepExecution에 매핑 할 ExecutionContext를 gridSize 만큼 생성한다
+  * 각 ExecutionContext에 저장된 정보는 WorkStep을 실행하는 스레드마다 독립적으로 참조 및 활용 가능하다
+
+
+
+흐름은 대략 아래와 같다.
+
+<img width="1913" alt="image" src="https://user-images.githubusercontent.com/45073750/217291017-d794bf03-719a-45e3-b6a1-796a87f57973.png">
+
+<img width="1910" alt="image" src="https://user-images.githubusercontent.com/45073750/217291163-4368b30b-e6e7-46a3-8652-f84138ece4c0.png">
+
+
+
+이제 코드로 살펴보겠다.  
+
