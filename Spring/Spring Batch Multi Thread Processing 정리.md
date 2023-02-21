@@ -276,3 +276,132 @@ public Job job() throws RetryableException {
 
 이제 코드로 살펴보겠다.  
 
+```java
+@Bean
+public Job job() throws RetryableException {
+    return jobBuilderFactory.get("Job")
+                            .incrementer(new RunIdIncrementer())
+                            .start(masterStep())
+                            .build();
+}
+
+@Bean
+public Step masterStep() {
+    return stepBuilderFactory.get("masterStep")
+                             .partitioner(slaveStep().getName(), partitioner()) // 1
+                             .step(slaveStep()) // 2
+                             .gridSize(4) // 3
+                             .taskExecutor(new SimpleAsyncTaskExecutor()) //4
+                             .build();
+}
+```
+
+* 1: ``PatitionStepBuilder``가 생성되고 ``Partitioner``를 설정
+* 2: 슬레이브 역할의 ``Step``을 설정
+* 3: 몇 개의 파티션으로 나눌 것인지 gridSize 설정
+* 4: 스레드 풀 실행자 설정
+
+```java
+@Bean
+public Step slaveStep() {
+    return stepBuilderFactory.get("slaveStep")
+                             .<Customer, Customer>chunk(100)
+                             .reader(itemReader(null, null))
+                             .writer(대충writer)
+                             .build();
+}
+
+@Bean
+public Partitioner partitioner() {
+    return new ColumnRangePartitioner();
+}
+
+@Bean
+@StepScope
+public ItemReader<Customer> itemReader(
+        @Value("#{stepExecutionContext['minValue']}") Long minValue,
+        @Value("#{stepExecutionContext['maxValue']}") Long maxValue
+) {
+    //대충 쿼리 관련 코드들...
+    "where id >= " + minValue + "and id <= " + maxValue
+}
+
+public class ColumnRangePartitioner implements Partitioner {
+
+    ...
+    @Override
+    public Map<String, ExecutionContext> partition(int gridSize) {
+        int min = jdbcTemplate.queryForObject("SELECT MIN(" + column + ") from " + table, Integer.class);
+        int max = jdbcTemplate.queryForObject("SELECT MAX(" + column + ") from " + table, Integer.class);
+        int targetSize = (max - min) / gridSize + 1;
+
+        Map<String, ExecutionContext> result = new HashMap<>();
+        int number = 0;
+        int start = min;
+        int end = start + targetSize - 1;
+
+        while (start <= max) {
+            ExecutionContext value = new ExecutionContext();
+            result.put("partition" + number, value);
+
+            if (end >= max) {
+                end = max;
+            }
+            value.putInt("minValue", start);
+            value.putInt("maxValue", end);
+            start += targetSize;
+            end += targetSize;
+            number++;
+        }
+
+        return result;
+    }
+}
+```
+
+위 코드를 간략히 말하자면, 파티셔너에서 girdSize를 이용해서 minValue와  maxValue를 설정한다. 해당 테이블에 1000개의 데이터가 있다면 minValue와  maxValue의 값이 1~250, 251~500, 501~750, 751~1000 가 될 것이고 이것들이 StepExecutionContext에 저장이된다.  
+
+이제 gridSize 개수 만큼의 쓰레드가(``SimpleAsyncTaskExecutor``는 요청이 오는대로 쓰레드를 생성함, [Async 관련 링크](https://github.com/Be-poz/TIL/blob/master/Spring/%40Async%20%EB%A5%BC%20%EC%9D%B4%EC%9A%A9%ED%95%9C%20%EB%B9%84%EB%8F%99%EA%B8%B0%20%EC%B2%98%EB%A6%AC%EC%97%90%20%EB%8C%80%ED%95%B4.md)) 각각 스텝을 돌면서 StepExecutionContext 에서 minValue와 maxValue를 꺼내 read하고 그 결과들을 모아  writer에게 전달하게 된다.  
+
+
+
+### 실행순서  
+
+1. "masterStep" 및 "slaveStep" 스텝 생성. 여기서 "masterStep" 은 partition 빌더를 이용하였기 때문에  ``PartitionStep`` 으로 생성된다.
+
+2. ``PartitionStep``에서 ``partitionHandler.handle``을 통해 파티셔닝을 한다. "masterStep"의 stepExecution을 참조해서 "slaveStep"의 stepExecution을 생성해주기 때문에 파라미터로 "masterStep"의 stepExecution을 전달해 준 것이다.
+
+   ![image](https://user-images.githubusercontent.com/45073750/220408992-2ba07f28-49b0-47e3-aee7-c2f549edaa43.png)
+
+3. ``PartitionHandler`` 에서 쓰레드를 실행시키는 역할을 하는데 그 전에 각각의 쓰레드를 만들고 그 쓰레드에 배당되어야 할 각 StepExecution 객체를 만든다.  ``StepExecutionSplitter``가 gridSize 만큼 StepExecution을 생성 후 반환하게 된다.
+
+   ![image](https://user-images.githubusercontent.com/45073750/220409684-8f9798bf-3af3-4186-9fcb-c881bab21ef6.png)
+
+4. ``StepExecutionSpliter``는 ExecutionContext를 생성하게 되는데 이 역할을 ``Partitioner`` 한테 위임한다. 
+
+   ![image](https://user-images.githubusercontent.com/45073750/220411583-9f95b839-a675-44a9-971a-5cc219a7fba5.png)
+
+   ![image](https://user-images.githubusercontent.com/45073750/220414030-29b1d459-af92-4248-a77e-b015cadb3c7d.png)
+
+   첫 라인의 ``stepExecution``은 "masterStep"의 것이다. ``JobExecution``을 뽑고, ``getContexts`` 메서드를 호출하게 된다. 
+   splitSize는 gridSize로 설정해둔 4가 될 것이고 ``Partitioner``의 ``partition``메서드를 호출하게된다.  
+   위에 작성해둔 ``ColumnRangePartitioner``의 ``partition`` 메서드를 통해 gridSize 만큼의 ``ExecutionContext`` map이 반환이 된다.  
+   다시 ``split`` 메서드로 돌아와서 생성된 context만큼 stepName을 만들고 이를 이용해 ``StepExecution``을 만들고 "masterStep"의 ``StepExecution``을 사용해 뽑아놨던 ``JobExecution``에 생성한 ``StepExecution``을 생성해준다. 최종적으로 set에는 4개의 ``StepExecution``이 담기게 된다.
+
+5. 이제 ``PartitionHandler``가 4개의 ``StepExecutionContext``를 쓰레드가 실행하도록 ``doHandle`` 메서드를 호출하게 된다.  
+
+   ![image](https://user-images.githubusercontent.com/45073750/220415018-6be5fdb9-66dd-4757-b387-0ab473a592ac.png)
+
+   ![image](https://user-images.githubusercontent.com/45073750/220415315-ec73de1a-52ac-41b7-b2ef-74b8725c3138.png)
+
+   ![image](https://user-images.githubusercontent.com/45073750/220415570-317c14bf-f51a-4974-b953-85b5c15f3e66.png)
+
+   
+
+쓰레드가 실행하게할 task를 만드는 메서드인 ``createTask`` 를 살펴보면 스텝이 ``stepExecution``을 실행하게끔 되어있다. 이게 무슨뜻이냐면 slave 스텝은 4개가 생성되는 것이 아니라 단 1개만 생성되어 ``stepExecution``을 처리하게 되는 것이다. 이렇게 수행을 하게 된다.
+
+
+
+<br/>
+
+## SynchronizedItemStreamReader
