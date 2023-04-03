@@ -405,3 +405,16 @@ public class ColumnRangePartitioner implements Partitioner {
 <br/>
 
 ## SynchronizedItemStreamReader
+
+* Thread-saf 핳지 않은 ItemReader를 Thread-safe 하게 처리하도록 하는 역할을 한다
+* Spring Batch 4.0 부터 지원한다
+
+![image](https://user-images.githubusercontent.com/45073750/229524944-35744f3c-c4e2-4c95-8030-9e1f7b8f1ffc.png)
+
+![image](https://user-images.githubusercontent.com/45073750/229525260-1cbc01c2-705a-46af-b3e8-7811430c3738.png)
+
+---
+
+### REFERENCE
+
+정수원님 스프링 배치 강의
