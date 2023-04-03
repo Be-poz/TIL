@@ -71,8 +71,8 @@
 
 위의 Job을 ``name=kangggggg`` jobParameter를 주고 돌려보면 ``jobParamer is: kangggggg``, ``jobParameter with using stepScope: kangggggg`` 로 잘 출력되는 것을 확인할 수가 있다.  
 
-<Br/>
 ---
+
 ### REFERENCE
 
 정수원님 스프링 배치 강의
