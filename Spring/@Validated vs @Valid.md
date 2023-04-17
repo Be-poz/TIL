@@ -139,7 +139,7 @@ public class CheckController {
 @Validated
 public class CheckService {
 
-    public void check(@Valided CheckRequest request) {}
+    public void check(@Valid CheckRequest request) {}
 
     public void checkNum(@Positive int num) {}
 
