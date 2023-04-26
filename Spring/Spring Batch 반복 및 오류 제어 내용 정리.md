@@ -302,7 +302,7 @@ reader에 ``i == 1`` 일 경우 exception 을 던지게끔 해놨었는데,
 * Skip은 데이터를 처리하는 동안 설정된 Exception이 발생했을 경우, 해당 데이터 처리를 건너뛰는 기능
 * ``ItemReader`` 과정에서 예외가 발생하면 해당 아이템만 스킵하고 진행
 * ``ItemProcessor`` 과정에서 예외가 발생하면 다시 Chunk의 처음으로 돌아가서 read 하게되고(이 때 read 할 item 들은 캐싱이 되어있음) 이전 process 과정에서 예외가 발생한 아이템은 체크가 되어있기 때문에 해당 아이템을 제외한 나머지 아이템들을 가지고 처리하게 됨
-* ``ItemWriter`` 과정에서 예외 발생 시 ``ItemProcessor``와 마찬가지로 처음부터 돌아가서 동작을 하고 예외가 발생한 아이템은 건너뛰게 된다.
+* ``ItemWriter`` 과정에서 예외 발생 시 ``ItemProcessor``와 마찬가지로 처음부터 돌아가서 동작을 하고 예외가 발생한 아이템은 건너뛰게 된다. 이 과정에서 원래라면 List<Item> 이렇게 리스트 형식으로 writer에 들어올 것을 processor에서 요소를 하나씩 처리하고 writer에 보내게 된다. processor에서 1, 3, 5 값이 있다면 한 번에 3개를 writer에 보내는 것이 아니라 processor에서 1처리 -> writer 1처리, processor에서 3처리 -> writer에서 3처리 ... 이런식으로 동작하게된다.
 * Skip은 내부적으로 ``SkipPolicy`` 를 통해서 구현되어 있다.
 * 스킵 대상에 포함된 예외인지 여부, 스킵 카운터를 초과 했는지 여부에 따라 Skip 가능 여부를 판별한다.
 
