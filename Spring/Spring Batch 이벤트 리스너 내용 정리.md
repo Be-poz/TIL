@@ -195,7 +195,162 @@ public class JobAndStepListenerConfiguration {
 
 ## ChunkListener / ItemReadListener / ItemProcessorListener / ItemWriterListener 
 
+```java
+public interface ChunkListener extends StepListener {
 
+	static final String ROLLBACK_EXCEPTION_KEY = "sb_rollback_exception";
 
+	void beforeChunk(ChunkContext context);
+	void afterChunk(ChunkContext context);
+	void afterChunkError(ChunkContext context);
+}
+```
 
+```java
+public interface ItemReadListener<T> extends StepListener {
+
+	void beforeRead();
+	void afterRead(T item);
+	void onReadError(Exception ex);
+}
+```
+
+```java
+public interface ItemProcessListener<T, S> extends StepListener {
+
+	void beforeProcess(T item);
+	void afterProcess(T item, @Nullable S result);
+	void onProcessError(T item, Exception e);
+}
+```
+
+```java
+public interface ItemWriteListener<S> extends StepListener {
+
+	void beforeWrite(List<? extends S> items);
+	void afterWrite(List<? extends S> items);
+	void onWriteError(Exception exception, List<? extends S> items);
+}
+```
+
+인터페이스 시그니처는 위와 같다. 메서드 명으로 파악할 수 있듯이 전/후에 수행할 행동과 에러가 났을 때 수행할 행동을 정의한다.  
+
+```java
+@RequiredArgsConstructor
+@Configuration
+public class ChunkListenerConfiguration {
+
+    private final JobBuilderFactory jobBuilderFactory;
+    private final StepBuilderFactory stepBuilderFactory;
+    private final CustomChunkListener customChunkListener;
+
+    @Bean
+    public Job job() throws Exception {
+        return jobBuilderFactory.get("batchJob")
+                                .incrementer(new RunIdIncrementer())
+                                .start(step1())
+                                .build();
+    }
+
+    @Bean
+    public Step step1() throws Exception {
+        return stepBuilderFactory.get("step1")
+                                 .<Integer, String>chunk(10)
+                                 .listener(customChunkListener)
+                                 .listener(new CustomItemReadListener())
+                                 .listener(new CustomItemProcessListener())
+                                 .listener(new CustomItemWriteListener())
+                                 .reader(listItemReader())
+                                 .processor((ItemProcessor) item -> {
+//                                     throw new RuntimeException("failed");
+                    return "item" + item;
+                                 })
+                                 .writer((ItemWriter<String>) items -> {
+//                                     throw new RuntimeException("failed");
+                                 })
+                                 .build();
+    }
+
+    @Bean
+    public ItemReader<Integer> listItemReader() {
+        List<Integer> list = Arrays.asList(1,2,3,4,5,6,7,8,9,10);
+        return new ListItemReader<>(list);
+    }
+}
+```
+
+위와 같이 리스너를 모두 등록하고 돌려보면(각 리스너에서 현재 어떤 단계인지 출력하게끔 구현해놨다)  
+
+```
+>> Before the chunk : step1
+>> beforeRead
+>> afterRead : 1
+>> beforeRead
+>> afterRead : 2
+...
+>> beforeRead
+>> afterRead : 10
+>> beforeProcess
+>> afterProcess : 1
+>> afterProcess : item1
+>> beforeProcess
+>> afterProcess : 2
+>> afterProcess : item2
+...
+>> beforeWrite
+>> afterWrite : [item1, item2, item3, item4, item5, item6, item7, item8, item9, item10]
+>> After the chunk : step1
+>> Before the chunk : step1
+>> beforeRead
+>> After the chunk : step1
+```
+
+위와 같이 나온다. read와 write 옆의 숫자는 reader의 list 내부 item을 출력하게끔 해둔 것이다.  
+
+1청크가 끝난 후 다음 청크 단위를 넘어가려 했지만 reader가 1~10 까지 이므로 요소가 없어서 바로 processor로 넘어가지 않고 마무리 되고 after the chunk가 호출된 것을 확인할 수가 있다.  
+
+```java
+.processor((ItemProcessor) item -> {
+  throw new RuntimeException("failed");
+//return "item" + item;
+})
+
+//현재 processorListener의 구현은 아래와 같음
+@Component
+public class CustomItemProcessListener implements ItemProcessListener {
+
+	@Override
+	public void beforeProcess(Object item) {
+		System.out.println(">> beforeProcess");
+	}
+
+	@Override
+	public void afterProcess(Object item, Object result) {
+		System.out.println(">> afterProcess : "+ item);
+		System.out.println(">> afterProcess : "+ result);
+	}
+
+	@Override
+	public void onProcessError(Object item, Exception e) {
+		System.out.println(">> onProcessError : " + e.getMessage());
+		System.out.println(">> onProcessError : " + item);
+	}
+}
+
+```
+
+processor에서 예외를 던지게끔 변경하면  
+
+```
+...
+>> afterRead : 10
+>> beforeProcess
+>> onProcessError : failed
+>> onProcessError : 1
+>> After the chunk : step1
+```
+
+예상한 대로 ``onProcessError``가 호출이 되고 chunk가 끝나게 된다. reader, writer에서의 예외 처리도 위와 동일하게 이루어진다.  
+
+<Br/>
 
