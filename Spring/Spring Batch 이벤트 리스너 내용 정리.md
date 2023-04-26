@@ -354,3 +354,166 @@ processor에서 예외를 던지게끔 변경하면
 
 <Br/>
 
+### SkipListener / RetryListener
+
+```java
+public interface SkipListener<T,S> extends StepListener {
+
+	/**
+	 * Callback for a failure on read that is legal, so is not going to be
+	 * re-thrown. In case transaction is rolled back and items are re-read, this
+	 * callback will occur repeatedly for the same cause.  This will only happen
+	 * if read items are not buffered.
+	 * 
+	 * @param t cause of the failure
+	 */
+	void onSkipInRead(Throwable t);
+
+	/**
+	 * This item failed on write with the given exception, and a skip was called
+	 * for. 
+	 * 
+	 * @param item the failed item
+	 * @param t the cause of the failure
+	 */
+	void onSkipInWrite(S item, Throwable t);
+
+	/**
+	 * This item failed on processing with the given exception, and a skip was called
+	 * for. 
+	 * 
+	 * @param item the failed item
+	 * @param t the cause of the failure
+	 */
+	void onSkipInProcess(T item, Throwable t);
+
+}
+```
+
+``SkipListener``는 skip이 일어났을 때에 어디서 일어났는지에 따라 호출이 되게끔하는 리스너이다.  
+
+```java
+  @Bean
+  public Step step1() throws Exception {
+      return stepBuilderFactory.get("step1")
+              .<Integer, String>chunk(10)
+              .reader(listItemReader())
+              .processor(new ItemProcessor<Integer, String>() {
+                  @Override
+                  public String process(Integer item) throws Exception {
+                      if (item == 4) {
+                          throw new CustomSkipException("process skipped");
+                      }
+                      System.out.println("process : " + item);
+                      return "item" + item;
+                  }
+              })
+              .writer(new ItemWriter<String>() {
+                  @Override
+                  public void write(List<? extends String> items) throws Exception {
+                      for (String item : items) {
+                          if (item.equals("item5")) {
+                              throw new CustomSkipException("write skipped");
+                          }
+                          System.out.println("write : " + item);
+                      }
+                  }
+              })
+              .faultTolerant()
+              .skip(CustomSkipException.class)
+              .skipLimit(3)
+              .listener(customSkipListener)
+              .build();
+  }
+
+  @Bean
+  public ItemReader<Integer> listItemReader() {
+      List<Integer> list = Arrays.asList(1,2,3,4,5,6,7,8,9,10);
+      return new LinkedListItemReader<>(list);
+  }
+
+------------------------------------------------------------------------------
+@Component
+public class CustomSkipListener implements SkipListener {
+
+	@Override
+	public void onSkipInRead(Throwable t) {
+		System.out.println(">> onSkipInRead : "+ t.getMessage());
+	}
+
+	@Override
+	public void onSkipInWrite(Object item, Throwable t) {
+		System.out.println(">> onSkipInWrite : "+ item);
+		System.out.println(">> onSkipInWrite : "+ t.getMessage());
+	}
+
+	@Override
+	public void onSkipInProcess(Object item, Throwable t) {
+		System.out.println(">> onSkipInProcess : "+ item);
+		System.out.println(">> onSkipInProcess : "+ t.getMessage());
+	}
+}
+```
+
+위와 같이  batch configuration이 있다. reader에서는 item이 3일 때에 예외, processor, writer에서는 각각 4, 5에서 예외가 발생하고 있는 상황이다. 이를 돌려보면 다음과 같은 결과가 나오게 된다.  
+
+```
+read : 1
+read : 2
+read : 4
+read : 5
+read : 6
+read : 7
+read : 8
+read : 9
+read : 10
+process : 1
+process : 2
+process : 1
+process : 2
+process : 5
+process : 6
+process : 7
+process : 8
+process : 9
+process : 10
+write : item1
+write : item2
+process : 1
+write : item1
+>> onSkipInProcess : 4
+>> onSkipInProcess : process skipped
+>> onSkipInRead : read skipped : 3
+process : 2
+write : item2
+>> onSkipInRead : read skipped : 3
+process : 5
+process : 6
+write : item6
+>> onSkipInWrite : item5
+>> onSkipInWrite : write skipped
+>> onSkipInRead : read skipped : 3
+process : 7
+write : item7
+>> onSkipInRead : read skipped : 3
+process : 8
+write : item8
+>> onSkipInRead : read skipped : 3
+process : 9
+write : item9
+>> onSkipInRead : read skipped : 3
+process : 10
+write : item10
+>> onSkipInRead : read skipped : 3
+```
+
+``ItemReader``에서 skip이 발생하면 해당  item을 제외하고 진행되며 ``ItemProcessor``와 ``ItemWriter`` 에서는 chunk의 처음으로 돌아가서 스킵된 아이템을 제외한 나머지 아이템들을 가지고 처리하게 되는 것을 까먹지 말아야 한다.  
+
+``ItemReader``로 읽어들인 아이템들은 캐싱이 되어있으므로 processor의  skip처리 때에 다시 read 호출이 되지 않는 것을 확인할 수가 있다.  
+
+``ItemWriter``의 경우에는 chunk의 처음부터 다시 동작하는 것이 맞긴하지만 processor와 writer 단계에서 item을 한 번에 처리하는 것이 아닌 요소 별로 처리를 하게된다.  
+
+그리고 skip된 아이템들에 대한 정보를 출력해주는 것을 확인할 수가 있다. 
+
+<Br/>
+
