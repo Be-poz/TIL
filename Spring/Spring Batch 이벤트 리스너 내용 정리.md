@@ -356,6 +356,8 @@ processor에서 예외를 던지게끔 변경하면
 
 ### SkipListener / RetryListener
 
+#### SKipListener
+
 ```java
 public interface SkipListener<T,S> extends StepListener {
 
@@ -517,3 +519,196 @@ write : item10
 
 <Br/>
 
+#### RetryListener
+
+```java
+public interface RetryListener {
+
+	/**
+	 * Called before the first attempt in a retry. For instance, implementers can set up
+	 * state that is needed by the policies in the {@link RetryOperations}. The whole
+	 * retry can be vetoed by returning false from this method, in which case a
+	 * {@link TerminatedRetryException} will be thrown.
+	 * @param <T> the type of object returned by the callback
+	 * @param <E> the type of exception it declares may be thrown
+	 * @param context the current {@link RetryContext}.
+	 * @param callback the current {@link RetryCallback}.
+	 * @return true if the retry should proceed.
+	 */
+	<T, E extends Throwable> boolean open(RetryContext context, RetryCallback<T, E> callback);
+
+	/**
+	 * Called after the final attempt (successful or not). Allow the interceptor to clean
+	 * up any resource it is holding before control returns to the retry caller.
+	 * @param context the current {@link RetryContext}.
+	 * @param callback the current {@link RetryCallback}.
+	 * @param throwable the last exception that was thrown by the callback.
+	 * @param <E> the exception type
+	 * @param <T> the return value
+	 */
+	<T, E extends Throwable> void close(RetryContext context, RetryCallback<T, E> callback, Throwable throwable);
+
+	/**
+	 * Called after every unsuccessful attempt at a retry.
+	 * @param context the current {@link RetryContext}.
+	 * @param callback the current {@link RetryCallback}.
+	 * @param throwable the last exception that was thrown by the callback.
+	 * @param <T> the return value
+	 * @param <E> the exception to throw
+	 */
+	<T, E extends Throwable> void onError(RetryContext context, RetryCallback<T, E> callback, Throwable throwable);
+
+}
+```
+
+* open: 재시도 전 매번 호출됨, false를 반환하면  retry 시도를 하지 않음
+* close: 재시도 후 매번 호출됨
+* onError: 재시도 실패 시마다 호출됨
+
+```java
+@RequiredArgsConstructor
+@Configuration
+public class RetryListenerConfiguration {
+
+    private final JobBuilderFactory jobBuilderFactory;
+    private final StepBuilderFactory stepBuilderFactory;
+    private final CustomRetryListener customRetryListener;
+
+    @Bean
+    public Job job(){
+        return jobBuilderFactory.get("batchJob")
+                .incrementer(new RunIdIncrementer())
+                .start(step1())
+                .build();
+    }
+
+    @Bean
+    public Step step1(){
+        return stepBuilderFactory.get("step1")
+                .<Integer, String>chunk(10)
+                .reader(listItemReader())
+                .processor(new CustomItemProcessor())
+                .writer(new CustomItemWriter())
+                .faultTolerant()
+                .retry(CustomRetryException.class)
+                .retryLimit(2)
+                .listener(customRetryListener)
+
+                .build();
+    }
+
+    @Bean
+    public ItemReader<Integer> listItemReader() {
+        List<Integer> list = Arrays.asList(1,2,3,4);
+//        List<Integer> list = Arrays.asList(1,2,3,4,5,6,7,8,9,10);
+        return new LinkedListItemReader<>(list);
+    }
+}
+
+---------------------------------------------------------------------------------------
+public class CustomItemProcessor implements ItemProcessor<Integer,String> {
+
+    int count = 0;
+
+    @Override
+    public String process(Integer item) throws Exception {
+
+        if(count < 2) {
+            if (count % 2 == 0) {
+                count = count + 1;
+
+            } else if (count % 2 == 1) {
+                count = count + 1;
+                throw new CustomRetryException();
+            }
+        }
+        return String.valueOf(item);
+    }
+}
+
+public class CustomItemWriter implements ItemWriter<String> {
+    int count = 0;
+    @Override
+    public void write(List<? extends String> items) throws CustomRetryException {
+        for (String item : items) {
+            if(count < 2) {
+                if (count % 2 == 0) {
+                    count = count + 1;
+
+                } else if (count % 2 == 1) {
+                    count = count + 1;
+                    throw new CustomRetryException();
+                }
+            }
+            System.out.println("write : " + item);
+        }
+    }
+}
+
+@Component
+public class CustomRetryListener implements RetryListener{
+
+	@Override
+	public <T, E extends Throwable> boolean open(RetryContext context, RetryCallback<T, E> callback) {
+		System.out.println("open");
+		return true;
+	}
+
+	@Override
+	public <T, E extends Throwable> void close(RetryContext context, RetryCallback<T, E> callback, Throwable throwable) {
+		System.out.println("close");
+	}
+
+	@Override
+	public <T, E extends Throwable> void onError(RetryContext context, RetryCallback<T, E> callback, Throwable throwable) {
+		System.out.println("Retry Count: " + context.getRetryCount());
+	}
+}
+```
+
+위와 같은 코드일 때 실행시키면  
+
+```
+open
+close
+open
+Retry Count: 1
+close
+open
+close
+open
+close
+open
+close
+open
+close
+open
+write : 1
+Retry Count: 1
+close
+open
+close
+open
+close
+open
+close
+open
+close
+open
+write : 1
+write : 2
+write : 3
+write : 4
+close
+```
+
+위와 같이 출력이 된다.  
+
+Retry의 경우  ``ChunkIterator``를 통해  ``RetryTemplate``을 호출해 내부 로직을 for문을 돌리게 되므로,  
+처음에 open close 후 retry 한 번 발생하고 이후 다시 process 과정을 거친다. write 에서도 마찬가지로 1을 write하고 2에서 예외가 발생하여 retry가 일어나게 되고 다시 청크의 처음부터 돌아가서 process작업을 한 후 write를 정상적으로 작성하게 된다.  
+
+---
+
+### REFERENCE
+
+정수원님 스프링 배치 강의
