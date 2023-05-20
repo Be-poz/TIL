@@ -1,0 +1,461 @@
+# 서비스: 클라이언트가 파드를 검색하고 통신을 가능하게 함
+
+파드는 일시적이고 IP가 변경이 일어날 수도 있고 스케일링이 일어날 수도 있다.  
+따라서 쿠버네티스는 서비스를 이용해 파드 접근 문제를 해결한다.  
+
+## 서비스 소개
+
+쿠버네티스의 서비스는 동일한 서비스를 제공하는 파드 그룹에 지속적인 단일 접점을 만들려고 할 때 생성하는 리소스다.  
+각 서비스는 서비스가 존재하는 동안 절대 바뀌지 않는 IP 주소와 포트가 있다.  
+클라이언트는 해당 IP와 포트로 접속한 다음 해당 서비스를 지원하는 파드 중 하나로 연결된다.  
+
+백엔드와 프론트엔드의 서비스를 생각하면 대략 아래와 같이 나타낼 수 있다.  
+
+<img width="770" alt="image" src="https://github.com/Be-poz/TIL/assets/45073750/53af9695-4e14-4f2e-baed-a8ff8c9e19d2">
+
+<br/>
+
+### 서비스 생성
+
+서비스 연결은 서비스 뒷단의 모든 파드로 로드밸런싱된다. 어떤 파드가 서비스의 일부분인지는 레이블 셀렉터로 기억한다.  
+
+``k expose``로 서비스를 간단히 생성할 수도 있다. 하지만 yaml로 더 상세하게 설정이 가능하다.  
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubia
+spec:
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    app: kubia
+```
+
+포트 80으로 들어오면 ``app = kubia`` 레이블을 가진 파드한테 8080포트로 연결해준다는 의미이다.  
+생성 후 확인해보면 cluster-ip가 할당이 되어있는 것을 확인할 수가 있다. 이는 클러스터 내부에서만 액세스할 수 있다.  
+
+``k exec [pod-name] -- curl -s [custer-ip]`` 를 입력하면 접근이 가능하다. 명령어의 흐름은 아래와 같다.  
+
+<img width="822" alt="image" src="https://github.com/Be-poz/TIL/assets/45073750/cb3f002d-6ebc-498f-9d03-fe81c54d3be1">
+
+``k exec``를 사용하면 기존 파드의 컨테이너 내에서 원격으로 임의의 명령어를 실행할 수 있다.  
+
+``--``는 kubectl 명령줄 옵션의 끝을 의미한다.  
+
+명령 때마다 임의의 파드를 선택해 연결을 하게 되는데, ``sessionAffinity: ClientIP`` 이렇게 클라이언트 ip를 지정하면 동일한 클라이언트 IP의 모든 요청을 동일한 파드로 전달하게 된다.  
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubia
+spec:
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+  - name: https
+    port: 443
+    targetPort: 8443
+  selector:
+    app: kubia
+```
+
+ 파드에서 여러 포트를 수신받는다면 위와 같이 멀티 포트 서비스를 생성할 수도 있다.  
+
+```yaml
+kind: Pod
+spec:
+  containers:
+  - name: kubia
+    ports:
+    - name: http
+      containerPort: 8080
+    - name: https
+      containerPorts: 8443
+```
+
+위와 같이 파드를 포트 번호로만 참조하지 않고 포트에 이름을 부여할 수 있고 이를 아래와 같이서비스에서 참조할 수가 있다.  
+
+```yaml
+apiVersion: v1
+kind: Service
+spec:
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+  - name: https
+    port: 443
+    targetPort: https
+```
+
+이렇게 설정을 하면 이후 서비스 스펙을 변경하지 않고도 포트 번호를 변경할 수 있다는 장점이 있다.  
+
+<br/>
+
+### 서비스 검색
+
+파드는 항상 서비스의 IP 주소로 액세스할 수 있어야 한다.  
+
+파드가 시작되면 쿠버네티스는 해당 시점에 존재하는 각 서비스를 가리키는 환경변수 세트를 초기화한다. 클라이언트 파드를 생성하기 전에 서비스를 생성하면 해당 파드의 프로세스는 환경변수를 검사해 서비스의 IP 주소와 포트를 얻을 수 있다.  
+
+``k exec [pod name] env``를 하면 서비스의 클러스터 IP와 제공되는 포트가 출력되는 것을 확인할 수가 있다.  
+
+각 서비스는 내부 DNS 서버에서 DNS 항목을 가져오고 서비스 이름을 알고 있는 클라이언트 파드는 환ㄱ여변수 대신 FQDN(정규화된 도메인 이름)으로 액세스할 수 있다.  
+
+``backend-database.default.svc.cluster.local`` 이라는 FQDN은 서비스 이름이 backend-database, 네임스페이스가 default, svc.cluster.local은 모든 클러스터의 로컬 서비스 이름에 사용되는 클러스터의 도메인 접미사다.  
+
+``k exec -it [pod name]`` 으로 파드의 컨테이너 내에서 bash를 실행할 수 있다.  
+
+이후 내부에서 ``curl http://[svc name].[namespace].svc.cluster.local``을 입력하면 해당 서비스에 호출이 가는 것을 확인할 수가 있다.  
+
+``svc.cluster.local``은 모든 클러스터의 로컬 서비스 이름에 사용되는 클러스터의 도메인 접미사다.  
+
+서비스 IP로 ping을 해서 작동 여부를 확인하는 것은 불가능하다. 서비스의 클러스터 IP가 가상 IP이므로 서비스 포트와 결합된 경우에만 의미가 있기 때문이다.  
+
+<br/>
+
+## 클러스터 외부에 있는 서비스 연결
+
+서비스가 클러스터 내에 있는 파드로 연결을 전달하는 게 아니라, 외부 IP와 포트로 연결을 전달하는 것을 알아보겠다.  
+
+### 서비스 엔드포인트 소개
+
+서비스는 사실 파드에 직접 연결되지 않는다. 대신 엔드포인트 리소스가 그 사이에 있다.  
+
+서비스를 describe 해보면 서비스의 엔드포인트를 나타내는 파드 IP와 포트 목록을 확인할 수가 있다.  
+
+``k get endpoints [svc name]`` 을 이용하면 엔드포인트만 따로 확인할 수가 있다.  
+
+<br/>
+
+### 서비스 엔드포인트 수동 구성
+
+서비스에 파드 셀렉터 없이 만들면 엔드포인트 리소스를 만들지 못한다. 어떤 파드인지 알 수 없기 때문이다. 서비스와 엔드포인트를 수동으로 설정해서 사용할 수 있다.  
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: external-service   // 엔드포인트 오브젝트 이름과 일치해야 한다
+spec:
+  ports:
+  - port: 80
+
+
+----
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: external-service
+subsets:
+  - addresses:
+    - ip: 11.11.11.11    // 서비스가 연결을 전달할 엔드포인트의 IP
+    - ip: 22.22.22.22
+    ports:
+    - port: 80           // 엔드포인트의 대상 포트
+```
+
+<img width="694" alt="image" src="https://github.com/Be-poz/TIL/assets/45073750/b3c3789d-1f86-42c8-a9bc-5ac5c69efaeb">
+
+결과적으로 위와 같은 형태가 된다.  
+
+<br/>
+
+### 외부 서비스를 위한 별칭 생성
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: external-service   // 엔드포인트 오브젝트 이름과 일치해야 한다
+spec:
+  type: ExternalName
+  externalName: someapi.somecompany.com  //FQDN 이름
+  ports:
+  - port: 80
+```
+
+외부 서비스의 별칭으로 사용되는 서비스를 만들려면 유형 필드를 ExternalName으로 설정해 서비스 리소스를 만들면된다.  
+
+서비스가 생성되면 파드는 서비스의 FQDN을 사용하는 대신 external-service.default.svc.cluster.local 도메인 이름으로 외부 서비스에 연결할 수 있다.  
+
+이렇ㅎ게 하면 서비스를 사용하는 파드에서 실제 서비스 이름과 위치가 숨겨져 나중에 externalName 속성을 변경하거나 유형을 다시 ClusterIP로 변경하고 서비스 스펙을 만들어 수정하면 나중에 다른 서비스를 가리킬 수 있다.  
+
+ExternalName 서비스는 DNS 레벨에서만 구현된다. 서비스에 관한 간단한 CNAME DNS 레코드가 생성된다. 따라서 서비스에 연결하는 클라이언트는 서비스 프록시를 완전히 무시하고 외부 서비스에 직접 연결된다. 이러한 이유로 ExternalName 유형의 서비스는 ClusterIP를 얻지 못한다.  
+
+<br/>
+
+## 외부 클라이언트에 서비스 노출
+
+이번에는 외부 클라이언트가 내가 만든 서비스에 접근할 수 있게끔 해보자. 방법은 3가지가 있다.
+
+* NordPort 서비스: 노드포트 서비스의 경우 각 클러스터 노드는 노드 자체에서 포트를 열고 해당 포트로 수신된 트래픽을 서비스로 전달한다. 이 서비스는 내부 클러스터 IP와 포트로 액세스 할 수 있고, 모든 노드의 전용 포트로도 액세스 할 수 있다.
+* LoadBalancer 서비스: 쿠버네티스가 실행 중인 클라우드 인프라에서 프로비저닝된 전용 로드밸런서로 서비스에 액세스할 수 있다. 로드밸런서는 트래픽을 모든 노드의 노드포트로 전달한다. 클라이언트는 로드밸런서의 IP로 서비스에 액세스한다.
+* 단일 IP 주소로 여러 서비스를 노출하는 인그레스 리소스 만들기: HTTP 레벨에서 작동하므로 4계층 서비스보다 더 많은 기능 제공이 가능하다.
+
+### 노드포트 서비스 사용
+
+모든 노드에 특정 포트를 할당하고 서비스를 구성하는 파드로 들어오는 연결을 전달한다. 일반 서비스(실제 유형은  Cluster IP)와 유사하지만 서비스의 내부 클러스터 IP뿐만 아니라 모든 노드의 IP와 할당된 노트포트로 서비스에 액세스 할 수 있다.  
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubia-nodeport
+spec:
+  type: NodePort			// 서비스 유형을 노드포트로 설정
+  ports:
+  - port: 80					// 서비스 내부 클러스터 IP의 포트
+    targetPort: 8080	// 서비스 대상 파드의 포트
+    nodePort: 30123		// 각 클러스터 노드의 포트 30123으로 서비스에 액세스 할 수 있다.
+  selector:
+    app: kubia
+```
+
+생성을 하고 조회를하면 아래와 같이 나온다.  
+
+![image](https://github.com/Be-poz/TIL/assets/45073750/5edc7640-9a84-4729-a279-d21d25ffe0ec)
+
+내 예시의 경우 노드의 외부 ip가 설정이 안되었지만 원래라면 노드의 ip가 할당이 되고 해당 ip의 30123 포트로 접근을 하면 해당 서비스로 접근이 되고 서비스는 파드를 연결해주게 된다.  
+
+<img width="796" alt="image" src="https://github.com/Be-poz/TIL/assets/45073750/f78af5c1-6fe0-4e57-8ae4-9a3a50862d59">
+
+### 외부 로드밸런서로 서비스 노출
+
+클라우드 공급자에서 실행되는 쿠버네티스 클러스터는 일반적으로 클라우드 인프라에서 로드밸런서를 자동으로 프로비저닝하는 기능을 제공한다. 로드밸런서는 공개적으로 엑세스 가능한 고유한 IP 주소를 가지며 모든 연결을 서비스로 전달한다. 따라서 로드밸런서의 IP 주소로 서비스에 액세스할 수 있다.  
+
+쿠버네티스가 로드밸런서 서비스를 지원하지 않는 환경에서 실행 중인 경우 로드밸런서는 프로비저닝되지 않지만 서비스는 노드포트 서비스처럼 작동한다. 로드밸런서 서비스는 노드포트 서비스의 확장이기 때문이다.  
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubia-loadbalancer
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    app: kubia
+```
+
+노드포트를 지정할 수 있지만 지정하지 않는다. 이렇게되면 쿠버네티스가 포트를 선택하게 된다.  
+
+![image](https://github.com/Be-poz/TIL/assets/45073750/e781c2bd-65f3-4c27-adb2-5878a0503958)
+
+이제 외부에서  curl을 통해서 접근이 가능하게 된다.  
+curl로 호출하면 매번 다른 파드로 연결이 되지만, 웹 브라우저로 연결을 하면 같은 파드만 찌르게 된다. 그 이유는 세션 어피니티가 None이지만 브라우저는 keep-alive 연결을 사용하고 같은 연결로 모든 요청을 보내기 때문이다.  
+
+<img width="804" alt="image" src="https://github.com/Be-poz/TIL/assets/45073750/68ae9216-005e-44e7-bd4e-20acbfb772e2">
+
+### 외부 연결의 특성 이해
+
+외부 클라이언트가 노드포트로 서비스에 접속할 경우 임의로 선택된 파드가 연결을 수신한 동일한 노드에서 실행 중일 수도 있고, 그렇지 않을 수도 있다. 외부의 연결을 수신한 노드에서 실행 중인 파드로만 외부 트래픽을 전달하도록 서비스를 구성해 이 추가 홉을 방지할 수 있다.  
+
+서비스 스펙 섹션에서 ``externalTrafficPolicy: Local`` 을 설정하면 된다.  
+
+<br/>
+
+## 인그레스 리소스로 서비스 외부 노출
+
+인그레스는 한 IP 주소로 수십 개의 서비스에 접근이 가능하도록 지원해준다.  
+클라이언트가 HTTP 요청을 인그레스에 보낼 때, 요청한 호스트와 경로에 따라 요청을 전달할 서비스가 결정된다.
+
+<img width="844" alt="image" src="https://github.com/Be-poz/TIL/assets/45073750/38b63a6e-2f9a-4c70-890f-606fece447cf">
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kubia
+spec:
+  rules:
+  - host: kubia.example.com		// 인그레스는 kubia.example.com 도메인 이름을 서비스에 매핑한다
+    http:
+      paths:
+      - path: /								// 모든 요청은 kubia-nodeport 서비스의 포트 80으로 전달된다
+        pathType: Prefix
+        backend:
+          service:
+            name: kubia-nodeport
+            port:
+              number: 80
+```
+
+``kubia.example.com``으로 요청되는 인그레스 컨트롤러에 수신된 모든 HTTP 요청을 포트 80의 kubia-nodeport 서비스로 전송하도록 하는 인그레스 규칙을 정의했다.  
+
+생성하고 조회하여 나온 IP를 이용해 DNS 서버를 구성하거나, /etc/hosts에 추가할 수 있다.  
+
+<img width="841" alt="image" src="https://github.com/Be-poz/TIL/assets/45073750/3d7c7f78-13ff-41e8-a457-b975e26a256c">
+
+### 하나의 인그레스로 여러 서비스 노출
+
+#### 동일한 호스트의 다른 경로로 여러 서비스 매핑
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kubia
+spec:
+  rules:
+  - host: kubia.example.com
+    http:
+      paths:
+      - path: /kubia				/ kubia.example.com/kubia 으로의 요청은 kubia 서비스로 라우팅
+        pathType: Prefix
+        backend:
+          service:
+            name: kubia
+            port:
+              number: 80
+      - path: /bar					/ kubia.example.com/bar로의 요청은 bar 서비스로 라우팅
+        pathType: Prefix
+        backend:
+          service:
+            name: bar
+            port:
+              number: 80
+```
+
+#### 서로 다른 호스트로 서로 다른 서비스 매핑
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kubia
+spec:
+  rules:
+  - host: foo.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: foo
+            port:
+              number: 80
+  - host: bar.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: bar
+            port:
+              number: 80
+```
+
+이 때에 DNS에 foo.example.com과 bar.example.com 도메인 이름을 모두 인그레스 컨트롤러의 IP 주소로 지정해야 한다.  
+
+<br/>
+
+## 파드가 연결을 수락할 준비가 됐을 때 신호 보내기
+
+서비스가 파드와 연결이 되었지만 파드는 준비가 되지 않았을 수도 있다. 이럴 떄 파드에 레디니스 프로브(readiness probe)를 정의할 수 있다.  
+
+3가지 유형의 레디니스 프로브가 있다.  
+
+* 프로세스를 실행하는 Exec 프로브는 컨테이너의 상태를 프로세스의 종료 상태 코드로 결정한다.
+* HTTP GET 프로브는 HTTP GET 요청을 컨테이너로 보내고 응답의 HTTP 상태 코드를 보고 컨테이너가 준비됐는지 여부를 결정한다.
+* TCP 소켓 프로브는 컨테이너의 지정된 포트로 TCP 연결을 연다. 소켓이 연결되면 컨테이너가 준비된 것으로 간주한다.
+
+<br/>
+
+### 레디니스 프로브의 동작
+
+컨테이너가 시작되고 주기적으로 프로브를 호출한다. 파드가 준비되지 않으면 서비스에서 제거되고 준비되면 서비스에 닷 ㅣ추가된다(서비스의 엔드 포인트에 추가/제거 된다는 것이다).  
+
+라이브니스 프로브와 달리 레디니스 프로브는 실패하더라도 컨테이너가 종료되거나 다시 시작되지 않는다.  
+
+<img width="781" alt="image" src="https://github.com/Be-poz/TIL/assets/45073750/bf36838e-a133-4f87-a5f8-551fe81f8879">
+
+<br/>
+
+### 파드에 레디니스 프로브 추가
+
+```yaml
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: kubia
+spec:
+  replicas: 3
+  selector:
+    app: kubia
+  template:
+    metadata:
+      labels:
+        app: kubia
+    spec:
+      containers:
+      - name: kubia
+        image: luksa/kubia
+        ports:
+        - containerPort: 8080
+        readinessProbe:
+          exec:
+            command:
+            - ls
+            - /var/ready
+```
+
+이제  ``k exec [pod name] -- touch /var/ready`` 로 /var/ready로 파일을 만들고 파드를 확인해보면 해당 파드가 READY 상태가 된 것을 확인할 수가 있다.  
+
+레디니스 프로브를 정의하지 않으면 파드가 시작하는 즉시 서비스 엔드포인트가 되므로 레디니스 프로브를 설정해주는 것이 좋다.  
+레디니스 프로브에 파드의 종료 코드를 포함시키면 안된다.
+
+<br/>
+
+## 헤드리스 서비스로 개별 파드 찾기
+
+클라이언트가 모든 파드에 연결해야 하는 경우에 파드 IP를 API 서버에 호출하여 사용하기에는 무리가 있다. 쿠버네티스는 DNS 조회로 파드 IP를 찾을 수 있도록 한다. 일반적으로 DNS 조회를 수행하면 DNS 서버는 서비스의 클러스터 IP를 반환하지만 서비스에 클러스터 IP가 필요하지 않다고 설정을 하면 DNS 서버는 서비스 IP 대신 파드의 IP들을 반환한다.  
+
+### 헤드리스 서비스 생성
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubia-headless
+spec:
+  clusterIP: None
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    app: kubia
+```
+
+이제 클러스터 내부에서 kubia-headless에 대해서  ip를 확인해보면  
+
+![image](https://github.com/Be-poz/TIL/assets/45073750/c4e94d08-2a2f-4364-934e-3f729fb8fe79)
+
+파드의 ip 정보를 반환해주는 것을 호가인할 수가 있다.  
+
+<br/>
+
+## 서비스 문제 해결
+
+서비스로 파드에 액세스할 수 없는 경우 이것들을 확인해보자.
+
+* 먼저 외부가 아닌 클러스터 내에서 서비스의 클러스터 IP에 연결되는지 확인한다.
+* 서비스에 액세스할 수 있는지 확인하려고 서비스 IP로 핑을 할 필요 없다.
+* 레디니스 프로브를 정의했다면 성공했는지 확인하자. 그렇지 않으면 파드는 서비스에 포함되지 않는다.
+* 파드가 서비스의 일부인지 확인하려면 k get endpoints를 사용해 확인하자.
+* FQDN이나 그 일부로 서비스에 액세스하려고 하는데 작동하지 않는 경우, FQDN 대신 클러스터 IP를 사용해 액세스할 수 있는지 확인한다.
+* 대상 포트가 아닌 서비스로 노출된 포트에 연결하고 있는지 확인한다.
+* 파드 IP에 직접 연결해 파드가 올바른 포트에 연결돼 있는지 확인한다.
+* 파드 IP로 애플리케이션에 액세스할 수 없는 경우 애플리케이션이 로컬호스트에만 바인딩하고 있는지 확인한다.
+
+---
+
