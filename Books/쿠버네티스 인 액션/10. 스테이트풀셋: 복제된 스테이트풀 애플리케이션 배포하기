@@ -1,0 +1,227 @@
+# 스테이트풀셋: 복제된 스테이트풀 애플리케이션 배포하기
+
+## 스테이트풀 파드 복제하기
+
+<img width="649" alt="image" src="https://github.com/Be-poz/TIL/assets/45073750/6e6e6745-e136-41dd-9ca0-c6525a6b2427">
+
+파드 템플릿에는 클레임에 대한 참조가 있기 때문에 파드들은 동일한 퍼시스턴트 볼륨을 바라보게 된다.  
+파드별로 각기 다른 퍼시스턴트 볼륨을 바라보고자 단일 파드를 가진 레플리카셋을 여러개 운용하는 방식은 굉장히 번거롭다.  
+
+<img width="610" alt="image" src="https://github.com/Be-poz/TIL/assets/45073750/4ce5f8f0-23a8-485d-b0bf-b13e32b72891">
+
+<img width="698" alt="image" src="https://github.com/Be-poz/TIL/assets/45073750/3e9bc50e-f651-45d1-8914-146c6311e312">
+
+동일한 볼륨을 바라보게 하되, 파드의 볼륨 내부에서 별도의 파일 디렉터리를 갖게끔 할 수 있는 방법도 있다.  
+하지만, 파드 템플릿으로부터 각 인스턴스에 어떤 디렉터리를 사용해야 하는지 전달할 수 없다. 그러나 각 인스턴스가 생성되는 시점에 다른 인스턴스가 사용하지 않는 데이터 디렉터리를 자동으로 선택(가능하다면 생성)하도록 할 수 있다. 이 방법은 인스턴스 간 조정이 필요하고 올바르게 수행하기 쉽지 않다. 또한 공유 스토리지 볼륨에 병목 현상이 발생한다.  
+
+파드는 종료되고 새로 생성되면 새로운 호스트이름과 IP를 가지기 때문에 애플리케이션에서 이 데이터를 가지고 가면 문제가 발생할 수 있다.  
+
+특정 애플리케이션은 관리자가 다른 모든 클러스터 멤버의 리스트와 멤버들의 IP 주소를 각 멤버의 설정 파일에 기재해야 한다. 하지만 쿠버네티스에서 파드가 재스케줄링되기 때문에 문제가 있다.  
+
+이 문제를 해결하기 위해 각 개별 멤버에게 전용 쿠버네티스 서비스를 생성해 클러스터 멤버에 안정적인 네트워크 주소를 제공하는 것이다. 서비스 IP는 안정적이므로 설정에서 각 멤버를 서비스 IP를 통해 가리킬 수 있다.  
+
+<img width="679" alt="image" src="https://github.com/Be-poz/TIL/assets/45073750/6214231d-a318-4973-a9c0-063f52892a89">
+
+하지만 이런 방식은 어리석은 해결 방법이다. 이런 복잡한 해결책에 의존하지 않고 쿠버네티스에서는 스테이트풀셋 이라는 간단한 방법을 제공해준다.  
+
+<br/>
+
+## 스테이트풀셋 이해하기
+
+스테이트풀셋은 애플리케이션의 인스턴스가 각각 안정적인 이름과 상태를 가지며 개별적으로 취급돼야 하는 애플리케이션에 알맞게 만들어졌다.  
+
+파드가 종료되고 새롭게 생성되는 파드는 동일한 이름, 네트워크 아이덴티티, 상태 그대로 생성된다. 스테이트풀셋으로 생성된 파드는 서수 인덱스(0부터 시작)가 할당되고 파드의 이름과 호스트 이름, 안정적인 스토리지를 붙이는 데 사용된다.  
+
+<img width="740" alt="image" src="https://github.com/Be-poz/TIL/assets/45073750/b123b6e6-e8e3-4030-bac8-855952c90fd7">
+
+아무 파드나 사용해도 문제될 것이 없는 스테이트리스 파드와 다르게 스테이트풀 파드는 각각의 파드가 서로 다르기 떄문에 스테이트풀셋은 **거버닝 헤드리스 서비스**를 생성해서 각 파드에게 실제 네트워크 아이덴티티를 제공한다. 위의 그림에서 ``a-0.foo.default.svc.cluster.local``와 같이 파드의 이름과 함께 FQDN을 통해 접근 가능하다. 그리고 ``foo.default.svc.cluster.local`` 도메인의 SRV 레코드를 조회해 모든 스테이트풀셋의 파드 이름을 찾는 목적으로  DNS를 사용할 수 있다.  
+
+<img width="829" alt="image" src="https://github.com/Be-poz/TIL/assets/45073750/bc18a338-296e-431b-b55a-67bea1fe93fa">
+
+앞서 말했듯이 새롭게 생성되는 파드는 잃어버린 파드와 동일한 아이덴티티를 가진다. 스케일업 시에는 인덱스가 늘어나고(위의 그림에서는 A-2가 생성될 것임), 스케일 다운인 경우에는 인덱스가 높은 파드부터 삭제가 된다.
+
+<img width="860" alt="image" src="https://github.com/Be-poz/TIL/assets/45073750/9d1c2b8e-5497-4ddf-9a8e-69d385566c38">
+
+특정 스테이트풀 애플리케이션은 빠른 스케일 다운을 잘 처리하지 못하기 때문에 스테이트풀셋은 한 시점에 하나의 파드 인스턴스만 스케일 다운한다.  
+분산 데이터 스토어라면 여러 개 노드가 동시에 다운되면 데이터를 잃을 수 있다. 스케일 다운이 순차적으로 일어나면 분산 데이터 저장소는 손실된 복사본을 대체하기 위한 데이터 엔트리의 추가 복제본을 다른 곳에 생성할 시간을 갖게 된다.  
+
+이러한 이유로 스테이트풀셋은 인스턴스 하나라도 비정상인 경우 스케일 다운 작업을 허용하지 않는다. 
+
+<img width="752" alt="image" src="https://github.com/Be-poz/TIL/assets/45073750/c9d1e225-76d7-488c-90a7-6a9952103448">
+
+스테이트풀셋은 파드와 같이 퍼시스턴트볼륨클레임 또한 생성한다. 이렇게 각 파드와 매칭되는 클레임을 얻게되는 것이다.  
+그러나 스케일 다운을 할 때에는 파드만 삭제하고 클레임은 남겨둔다. 이후 스케일업 될 때에 생성해두었던 클레임을 다시 이용하게 된다.  
+
+<img width="779" alt="image" src="https://github.com/Be-poz/TIL/assets/45073750/3529b548-abd9-49fb-b59e-8f9517042aab">
+
+클레임이 삭제되면 콘텐츠 손실이 일어나기 때문에 치명적인 문제가 된다. 따라서 이렇게 보관을 하는 것이다.  
+
+그리고 스테이트풀셋은 파드를 생성하기 전에 파드가 더 이상 실행 중이지 않는다는 점을 확인을 하고 생성한다. 그렇지 않고 동일한 아이덴티티를 가진 파드가 생성이되면 결국 두 인스턴스는 동일한 스토리지에 바인딩되고 두 프로세스가 동일한 아이덴티티로 같은 파일을 쓰려고 할 것이기 때문이다.  
+
+<br/>
+
+## 스테이트풀셋 사용하기
+
+스테이트풀셋을 통해 애플리케이션을 배포하려면 다른 유형의 오브젝트 2가지 또는 3가지를 생성해야 한다.
+
+1. 데이터 저장을 위한 퍼시스턴트볼륨(클러스터가 퍼시스턴트볼륨의 동적 프로비저닝을 지원하지 않는다면 직접 생성해야함)
+2. 스테이트풀셋에 필요한 거버닝 서비스
+3. 스테이트풀셋 자체
+
+```yaml
+kind: List
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: PersistentVolume
+  metadata:
+    name: pv-a-poz
+  spec:
+    capacity:
+      storage: 1Mi
+    accessModes:
+      - ReadWriteOnce
+    persistentVolumeReclaimPolicy: Recycle			# 클레임에서 볼륨이 해제되면 다시 사용해 재사용된다
+    hostPath:
+      path: /tmp/pv-a-poz
+- apiVersion: v1
+  kind: PersistentVolume
+  metadata:
+    name: pv-b-poz
+  spec:
+    capacity:
+      storage: 1Mi
+    accessModes:
+      - ReadWriteOnce
+    persistentVolumeReclaimPolicy: Recycle
+    hostPath:
+      path: /tmp/pv-b-poz
+- apiVersion: v1
+  kind: PersistentVolume
+  metadata:
+    name: pv-c-poz
+  spec:
+    capacity:
+      storage: 1Mi
+    accessModes:
+      - ReadWriteOnce
+    persistentVolumeReclaimPolicy: Recycle
+    hostPath:
+      path: /tmp/pv-c-poz
+```
+
+먼저 퍼시스턴트볼륨을 3개 만들었다.  
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubia
+spec:
+  clusterIP: None		# 스테이트풀셋의 거버닝 서비스는 헤드리스여야 한다.
+  selector:
+    app: kubia
+  ports:
+  - name: http
+    port: 80
+```
+
+헤드리스 서비스를 생성하였다.  
+
+```yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kubia
+spec:
+  serviceName: kubia
+  replicas: 2
+  selector:
+    matchLabels:
+      app: kubia # has to match .spec.template.metadata.labels
+  template:
+    metadata:
+      labels:
+        app: kubia
+    spec:
+      containers:
+      - name: kubia
+        image: luksa/kubia-pet
+        ports:
+        - name: http
+          containerPort: 8080
+        volumeMounts:
+        - name: data					# 파드 내부의 컨테이너는 pvc 볼륨을 이 경로에 마운트한다
+          mountPath: /var/data
+  volumeClaimTemplates:				# 이 템플릿으로 퍼시스턴트볼륨클레임이 생성된다
+  - metadata:
+      name: data
+    spec:
+      resources:
+        requests:
+          storage: 1Mi
+      accessModes:
+      - ReadWriteOnce
+```
+
+파드는 매니페스트 안에 퍼시스턴트볼륨클레임 볼륨을 포함시켜 클레임을 참조한다.
+
+스테이트풀셋을 생성하고 파드를 살펴보면 1개씩 생성되는 것을 확인할 수 있다. 이것은 동시에 생성 시에 레이스 컨디션에 빠질 가능성이 있기 때문이다.  
+
+``k get pvc``를 입력하면 퍼시스턴트볼륨클레임이 생성된 것을 확인할 수가 있다.  
+
+<br/>
+
+파드를 생성하는데 사용한 이미지는 post 요청으로 들어온 메세지를 저장해뒀다가 get 요청을 하면 응답을 하는 이미지다.  
+파드에 post 요청으로 메세지를 저장해두고 해당 파드를 삭제 후 재스케줄링된 파드가 동일한 스토리지에 연결되어서 이전의 파드가 저장해둔 메세지를 그대로 출력하는지 확인해보자.  
+
+우선 ``k exec -it kubia-0 /bin/sh`` 를 통해 파드에 접속해서 curl 요청으로 메세지를 저장하고 나왔다.  
+
+![image](https://github.com/Be-poz/TIL/assets/45073750/40175057-e6db-4aa1-a817-c2bb542d1fc2)
+
+우선 파드를 삭제하고 재생성 시켰다.  
+
+![image](https://github.com/Be-poz/TIL/assets/45073750/2a5f720e-3f50-4dac-b48f-cdb8d045a785)
+
+파드에 들어가서 get 요청을 날려보니 저장했던 메세지를 그대로 출력하는 것을 확인할 수가 있다.  
+
+<img width="841" alt="image" src="https://github.com/Be-poz/TIL/assets/45073750/c783f373-1172-4de0-926a-b7b03fc69ca8">
+
+위와 같은 흐름으로 내부적으로 돌아간 것이다.  
+
+<br/>
+
+## 스테이트풀셋의 피어 디스커버리
+
+스테이트풀셋의 각 멤버는 다른 멤버를 쉽게 찾을 수 있어야 한다. API 서버와 통신해 찾을 수 있지만 쿠버네티스의 목표 중 하나인 애플리케이션을 완전히 쿠버네티스에 독립적으로 유지하며 기능을 노출에 부합하지 않기 때문에 다른 멤버를 찾을 수 있어야 한다. 이를 SRV 레코드를 이용하여 해결한다.  
+
+SRV 레코드는 특정 서비스를 제공하는 서버의 호스트 이름과 포트를 가리키는 데 사용된다. 쿠버네티스는 헤드리스 서비스를 뒷받침하는 파드의 호스트 이름을 가리키도록 SRV 레코드를 생성한다.  
+
+``k run -it srvlookup --image=tutum/dnsutils --rm --restart=Never -- dig SRV kubia.default.svc.cluster.local`` 명령어를 이용하여 srvlookup 이라는 1회용 파드를 실행하고 콘솔에 연결되며 종료되자마자 바로 삭제된다. 파드는 tutum/dnsutils 이미지의 단일 컨테이너를 실행하고 ``dig SRV kubia.default.svc.cluster.local`` 명령을 수행한다.  
+
+명령을 수행하면 ANSWER SECTION에는 헤드리스 서비스를 뒷받침하는 두 개의 파드를 가리키는 두 개의 SRV 레코드를 보여준다.  
+
+<br/>
+
+### 스테이트풀셋 업데이트
+
+``k edit statefulset [name]`` 을 통해 스테이트풀셋을 업데이트 할 수 있다. replicas를 늘리면 생성이 되지만 이미지를 변경해도 레플리카셋과 마찬가지로 파드가 재생성되어야만 새로운 이미지로 업데이트가 된다. 따라서 수동으로 파드를 삭제해야 적용이 된다.  
+
+<Br/>
+
+## 스테이트풀셋이 노드 실패를 처리하는 과정 이해하기
+
+위에서 한 번 언급을 했듯이 스테이트풀 파드는 더 이상 실행중이지 않음을 절대적으로 확신해야 한다고 말했다. 만약 노드가 갑자기 실패하면 쿠버네티스는 노드나 그 안의 파드의 상태를 알 수 없다. 스테이트풀셋은 파드가 더 이상 실행되지 않는다는 것을 확신할 때까지 대체 파드를 생성할 수 없으며, 생성해서도 안된다. 오직 클러스터 관리자가 알려줘야만 알 수 있다. 이를 위해 관리자는 파드를 삭제하거나 전체 노드를 삭제해야 한다.  
+
+노드가 실패하게되면 ``k get node`` 시에 노드의 status가 ``NotReady`` 상태가 되며, 해당 노드에 속한 파드는 ``Unknown`` 상태가 된다.  
+
+노드가 다시 돌아오면 파드는 ``Running``으로 표시되지만, 몇 분이 지나도 파드의 상태가 ``Unknown`` 으로 남아있으면 파드는 자동으로 노드에서 제거된다. 마스터가 이 동작을 수행한다. 파드 리소스를 삭제해 파드를 제거한다. 파드의 종료 이유에 NodeLost로 찍히고 Terminating으로 표시된다.  
+
+노드가 돌아오지 않았지만 정상적인 애플리케이션 실행을 위해서는 약속된 개수의 파드가 실행 중이어야 하므로 노드나 파드를 수동으로 삭제해야 한다.  
+
+``k delete po [pod name]`` 을 해도 po 상태가 제대로 삭제가 되지 않는 경우가 있는데, 이 때에는 kubelet이 파드가 더 이상 실행 중이지 않음을 확인해주는 것을 기다리지 않고 API 서버에게 파드를 삭제하도록 알리는 것이다.  
+
+``k delete po [pod name] --force --grace-period 0`` 이렇게 파드를 강제 삭제할 수 있다. 노드가 더 이상 실행 중이 아니거나 연결 불가함을 아는 경우가 아니라면, 스테이트풀 파드를 강제로 삭제하지 말아야 한다.  
+
+---
+
