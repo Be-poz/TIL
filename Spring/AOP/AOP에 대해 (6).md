@@ -428,7 +428,7 @@ public class AspectV6Advice {
 }
 ```
 
-모든 Advice는 ``JoinPoint``르ㄹ 첫 번째 파라미터에 사용할 수 있다. 단, ``@Around`` 는 ``ProceedingJoinPoint`` 를 사용해야 한다.  
+모든 Advice는 ``JoinPoint``를 첫 번째 파라미터에 사용할 수 있다. 단, ``@Around`` 는 ``ProceedingJoinPoint`` 를 사용해야 한다.  
 
 ``JoinPoint`` 인터페이스의 주요 기능  
 
