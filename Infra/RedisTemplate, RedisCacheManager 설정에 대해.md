@@ -18,7 +18,7 @@ public class RedisConfig {
         return redisTemplate;
     }
 
-  // 수정) 아래 부분은 yaml 파일의 spring.data.redis 내부에 집어넣고 자동으로 생성되는 RedisConnectionFactory 빈을 주입받아서 사용하는 것이 더 편하다. 
+  // 수정) 아래 부분은 yaml 파일의 spring.data.redis 내부에 집어넣고 자동으로 생성되는 RedisConnectionFactory 빈을 주입받아서 사용하는 것이 더 편하다.
     @Bean
     public RedisConnectionFactory redisConnectionFactory() {
         RedisStandaloneConfiguration config = new RedisStandaloneConfiguration(redisProperties.getHost(), redisProperties.getPort());
@@ -134,6 +134,7 @@ spring:
 ```
 
 대충 위와 같이 yaml 파일에 정의를 해두고 따로 properties를 사용하지 않고 기본적으로 factory 빈이 생성되게끔 하고 이것을 주입받아서 사용하는 것이 더 편하다.  
+RedisConnectionFactory 내부의 RedisClusterConfiguration에 해당 값들이 들어가게 된다.
 
 ```java
 @Bean
