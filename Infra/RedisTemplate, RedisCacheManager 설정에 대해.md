@@ -7,6 +7,7 @@
 @RequiredArgsConstructor
 public class RedisConfig {
 
+// spring.data.redis yaml에 정의하고 이걸 토대로 자동으로 생성되는 RedisConnectionFactory 빈을 사용 추천
     private final RedisProperties redisProperties;
 
     @Bean
@@ -17,6 +18,7 @@ public class RedisConfig {
         return redisTemplate;
     }
 
+  // 수정) 아래 부분은 yaml 파일의 spring.data.redis 내부에 집어넣고 자동으로 생성되는 RedisConnectionFactory 빈을 주입받아서 사용하는 것이 더 편하다. 
     @Bean
     public RedisConnectionFactory redisConnectionFactory() {
         RedisStandaloneConfiguration config = new RedisStandaloneConfiguration(redisProperties.getHost(), redisProperties.getPort());
@@ -113,6 +115,37 @@ public class CacheController {
 초기 코드는 다음과 같다. ``RedisConnectionFactory`` 가 먼저 생성이 되어야 하는데, jedis 와 lettuce 중 lettuce 커넥션 팩토리를 사용하였다. 사실 그냥 ``new LettuceConnectionFactory({host}, {port})`` 로 바로 return 해줘도 되는데, 어차피 내부적으로 ``RedisStandaloneConfiguration`` 을 호출하고 있어서 풀어서 썼다.  
 
 username/password 를 설정할 수도 있지만 현재 사용하고 있지 않으므로 주석처리했다. 레디스 클러스터를 사용하는 경우에는 ``new RedisClusterConfiguration()`` 를 이용하여야 한다.  
+
+```yaml
+spring:
+  data:
+    redis:
+      cluster:
+        max-redirects: 5
+        nodes: ***
+      password: ***
+      lettuce:
+        pool:
+          max-idle: 8
+          min-idle: 1
+          max-active: 8
+          max-wait: 5s
+          time-between-eviction-runs: 10m
+```
+
+대충 위와 같이 yaml 파일에 정의를 해두고 따로 properties를 사용하지 않고 기본적으로 factory 빈이 생성되게끔 하고 이것을 주입받아서 사용하는 것이 더 편하다.  
+
+```java
+@Bean
+public RedisTemplate<Object, Object> redisTemplate(RedisConnectionFactory redisConnectionFactory) {
+    RedisTemplate<Object, Object> redisTemplate = new RedisTemplate<>();
+    redisTemplate.setConnectionFactory(redisConnectionFactory);
+
+    return redisTemplate;
+}
+```
+
+
 
 아무튼 생성한 팩토리로 ``RedisTemplate`` 에 set 해주고 이를 서비스에서 이용해주었다. ``opsForValue()`` 는 레디스가 지원하는 여러 컬렉션 타입 중에 key-value 형태를 사용하기 위해 사용하였다.  
 
@@ -295,3 +328,4 @@ default configuration의 prefix를 설정하고 캐시를 set 한 모습이다. 
 https://docs.spring.io/spring-data/data-redis/docs/current/reference/html/#redis:template  
 
 https://docs.spring.io/spring-data/data-redis/docs/current/reference/html/#redis:support:cache-abstraction
+
