@@ -1,4 +1,4 @@
-# Jpa Auditing에서 OffsetDateTime 사용하기
+# Jp Auditing에서 OffsetDateTime 사용하기
 
 ``@EnableJpaAuditing``을 사용한 jpa의 auditing에서 ``@CreateDate`` 과 같은 Date 관련 기능은 기본적으로 LocalDateTime 타입이 할당된다.  
 
