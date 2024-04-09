@@ -106,7 +106,32 @@ transforms 에는 그냥 임의의 이름을 두고, type에는 어떤 transform
 ```
 
 일반적으로 카프카 메타데이터의 값이 색인되지 않기 때문에 위의 값으로 색인을 시킬 수가 있다. 
-아예 새로운 필드를 추가할 수도 있긴 하지만 하드코딩된 값을 추가하는 것만 가능하고 다른 필드의 값을 빼서 넣는 형식은 불가능하다.
+아예 새로운 필드를 추가할 수도 있긴 하지만 하드코딩된 값을 추가하는 것만 가능하고 다른 필드의 값을 빼서 넣는 형식은 불가능하다.  
+
+여기서 생성되는 timestamp.field는 long type으로 자동생성되기 때문에 date 타입을 원한다면 미리 템플릿 등록을 해두어야 한다.  
+
+```json
+PUT _template/{index name}
+{
+  "index_patterns": [
+    "{index pattern}"
+    ], 
+  "mappings": {
+    "properties" : {
+      "kafka" : {
+        "properties" : {
+          "kafkaCreateDateTime" : {
+            "format" : "epoch_millis",
+            "type" : "date"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+
 
 ### 특정 조건에 맞을 때에만 record 색인하기
 
@@ -168,7 +193,7 @@ condition에는 jsonPath 형식으로 들어가게 된다. jsonPath의 filter op
 
 상품과 같이 id를 key로 가지고 있는 topic을 consume 하여 indexing 하는 경우 오류가 발생할 수 있다. 
 
-동일한 document 대상으로 여러 task가 계속해서 update를 치게되는 과정에서 version 어쩌고하면서 문제가 발생할 수 있다. 
+동일한 document 대상으로 여러 task가 계속해서 update를 치게되는 과정에서 version 어쩌고하면서 문제가 발생할 수 있다. 이 문제는 elastic/open search가 낙관적 락을 사용하기 때문에 발생한다. 애초에 빈번한 update가 일어나는 경우 es는 적절하지 않다고 한다.
 
 이럴 떄에는 'key.ignore' configuration 값을 true로 주면 해결이 된다. true로 주면 '{토픽명}+{파티션 번호}+{오프셋 번호}' 의 형식으로 id를 가지게 된다. 
 
@@ -181,4 +206,8 @@ https://docs.confluent.io/platform/current/installation/configuration/connect/in
 https://aiven.io/docs/products/kafka/kafka-connect/howto/opensearch-sink
 
 https://docs.confluent.io/platform/current/connect/transforms/overview.html
+
+https://discuss.elastic.co/t/version-conflict-409-question/311335
+
+https://discuss.elastic.co/t/version-conflict-issue-while-updating-data-continously/344065
 
