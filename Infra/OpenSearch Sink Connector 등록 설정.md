@@ -51,7 +51,7 @@ tar -xf opensearch-connector-for-apache-kafka-3.0.0.tar
 }
 ```
 
-configuration의 정보는 [confluent es sink connector configuration 공식 문서](https://docs.confluent.io/kafka-connectors/elasticsearch/current/configuration_options.html)와 open search sink connector를 제공한 [aiven의 공식 문서](https://aiven.io/docs/products/kafka/kafka-connect/howto/opensearch-sink)를 참고했다. 
+configuration의 정보는 [confluent es sink connector configuration 공식 문서](https://docs.confluent.io/kafka-connectors/elasticsearch/current/configuration_options.html)와 open search sink connector를 제공한 [aiven의 공식 문서](https://github.com/Aiven-Open/opensearch-connector-for-apache-kafka/blob/main/docs/opensearch-sink-connector-config-options.rst)를 참고했다. 
 
 위의 body 내용은 'test-topic' 이라는 토픽에서 컨슘하여 open search에 인덱싱하는 커넥터를 등록한 것이다. open search sink connector는 topic명 그대로 index 명으로 생성이 된다. 따라서 이것을 원하지 않는다면 alias를 이용하자.  
 
@@ -193,9 +193,21 @@ condition에는 jsonPath 형식으로 들어가게 된다. jsonPath의 filter op
 
 상품과 같이 id를 key로 가지고 있는 topic을 consume 하여 indexing 하는 경우 오류가 발생할 수 있다. 
 
-동일한 document 대상으로 여러 task가 계속해서 update를 치게되는 과정에서 version 어쩌고하면서 문제가 발생할 수 있다. 이 문제는 elastic/open search가 낙관적 락을 사용하기 때문에 발생한다. 애초에 빈번한 update가 일어나는 경우 es는 적절하지 않다고 한다.
+동일한 document 대상으로 여러 task가 계속해서 update를 치게되는 과정에서 version 어쩌고하면서 문제가 발생할 수 있습니다. 이 문제는 document에 lock이 걸리지 않고 낙관적 락을 사용하기 때문에 동시에 update 되는 경우 발생한다고 한다.  
+[관련링크1](https://discuss.elastic.co/t/version-conflict-409-question/311335), [관령링크2](https://discuss.elastic.co/t/version-conflict-issue-while-updating-data-continously/344065)  
 
 이럴 떄에는 'key.ignore' configuration 값을 true로 주면 해결이 된다. true로 주면 '{토픽명}+{파티션 번호}+{오프셋 번호}' 의 형식으로 id를 가지게 된다. 
+
+<Br/>
+
+### Q&A
+
+1. 커넥터를 삭제 후 다시 붙였을 때 데이터 처리가 되는지?
+   1. qwer 이라는 토픽에서 컨슘하는 qwer-test 라는 커넥터를 생성하게 되면 qwer이라는 인덱스에 record들이 인덱싱 됩니다. 이후 이 커넥터를 지우고 다시 qwer-test 를 등록해도 토픽에 컨슈머 그룹 id와 offset 정보가 있기 때문에 데이터를 다시 처리하지 않습니다. 그렇다면 동일하게 qwer 토픽을 바라보는데 커넥터 이름을 qwer-test2 라고 만들었을 경우, 결국 동일한 인덱스에 수행하는 것이기 때문에 내부적으로 실제로 인덱싱 하는지 아니면 그대로 update 치는지는 자세하지 않지만 결국 동일한 인덱스 내부 값이 남게 됩니다. 만약 새로운 이름을 가진 커넥터에다가 기존의 인덱스를 지운다면 다시 새롭게 인덱싱을 하게 될 것입니다. 
+2. task rebalancing이 있는가?
+   1. 일반 vm을 사용하는 것 처럼 task rebalancing이 있고 동작합니다. consume 도중 pod를 죽이면 리밸런싱이 일어나고 pod가 살아났을 때에도 다시 리밸런싱이 일어납니다. data 유실은 확인했을 때 없었습니다.
+3. helm, deployment 또는 pod를 재생성 하는 경우 기존의 connector가 날라가는가?
+   1. 날라가지 않습니다. connector 정보는 커넥트의 config 토픽에 저장되기 때문에 따로 pv 등을 이용하지 않아도 날라가지 않습니다. 
 
 ---
 
