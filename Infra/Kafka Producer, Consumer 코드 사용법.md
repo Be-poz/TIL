@@ -1,4 +1,4 @@
-# 프로듀서 컨슈머 코드 이용 및 간략 설명
+# Kafka Producer, Consumer 코드 사용법
 
 ## Kafka Client를 이용한 프로듀서
 
@@ -246,4 +246,42 @@ static class ShutdownThread extends Thread {
 ```
 
 ``poll()``메서드를 통해 지속적으로 레코드들을 받아 처리하다가 ``wakeup()``메서드가 호출되면, 다음 ``poll()``메서드가 호출될 때 ``WakeupException`` 예외가 발생한다. 이 ``wakeup()`` 메서드는 자바에서 셧다운 훅을 구현하여 명시적으로 구현할 수 있다. 셧다운 훅이란 사용자 또는 운영체제로부터 종료 요청을 받으면 실행하는 스레드를 뜻한다. 셧다운 훅을 사용하여 ``wakeup()`` 메서드를 호출하였다.  
+
+<br/>
+
+## Spring Kafka를 이용한 프로듀서
+
+```gradle
+implementation 'org.springframework.kafka:spring-kafka:3.2.1'
+```
+
+스프링 카프카 의존성을 설치하면 kafka-client 까지 같이 들어온다.  
+스프링 카프카 프로듀서는 ``KafkaTemplate`` 이라는 클래스를 사용한다.  
+스프링에서 제공하는 기본 템플릿을 사용하든가 아니면 ``ProducerFactory``를 사용해서 직접 템플릿을 생성하는 방법이 있다.  
+
+<img width="578" alt="image" src="https://github.com/user-attachments/assets/e15c6419-bc5f-43e3-805c-2f8570cb12ee">
+
+application.yaml 파일에 옵션을 설정하면 자동으로 오버라이드되어 설정된다. 카프카 클라이언트에서는 bootstrap-servers, key-serailizer, value-serializer를 선언하지 않으면 예외가 발생하지만 스프링 카프카에서는 localhost:9091, StringSerializer로 기본값이 세팅된다.  
+
+```java
+@SpringBootApplication
+public class KafkaStudyApplication implements CommandLineRunner {
+
+    private final static String TOPIC_NAME = "ksy-topic-0630";
+
+    @Autowired
+    private KafkaTemplate<String, String> template;
+
+    public static void main(String[] args) {
+        SpringApplication.run(KafkaStudyApplication.class, args);
+    }
+
+    @Override
+    public void run(String... args) throws Exception {
+        template.send(TOPIC_NAME, "Hello, World!");
+    }
+}
+```
+
+서버는 yaml에 기입해주었고, 기본 템플릿을 주입받아 사용하였다. ``send`` 메서드는 오버로드된 여러 시그니처들이 있다. 위의 코드에서는 토픽 명과 데이터만 넣었지만, 키, 파티션, 타임스탬프를 받을 수 있게끔 되어있고, ``ProducerRecord``를 받는 메서드도 있다.  
 
