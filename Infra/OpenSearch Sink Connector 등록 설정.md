@@ -54,7 +54,8 @@ tar -xf opensearch-connector-for-apache-kafka-3.0.0.tar
 configuration의 정보는 [confluent es sink connector configuration 공식 문서](https://docs.confluent.io/kafka-connectors/elasticsearch/current/configuration_options.html)와 open search sink connector를 제공한 [aiven의 공식 문서](https://github.com/Aiven-Open/opensearch-connector-for-apache-kafka/blob/main/docs/opensearch-sink-connector-config-options.rst)를 참고했다. 
 
 위의 body 내용은 'test-topic' 이라는 토픽에서 컨슘하여 open search에 인덱싱하는 커넥터를 등록한 것이다.  
-~~open search sink connector는 topic명 그대로 index 명으로 생성이 된다. 따라서 이것을 원하지 않는다면 alias를 이용하자.~~ -> 아래의 인덱스 명 변경하기에서 다른 방법을 적어둠.
+~~open search sink connector는 topic명 그대로 index 명으로 생성이 된다. 따라서 이것을 원하지 않는다면 alias를 이용하자.~~  
+-> 아래의 인덱스 명 변경하기에서 다른 방법을 적어둠.
 
 username과 password 같은 값 들은 하드코딩해서 그대로 입력하면 안된다. 왜냐하면 해당 커넥터의 config 조회를 하면 그대로 들어나기 때문이다. 따라서 properties 파일 안에 넣어두고 그것을 읽어오는 방식을 취해야 한다. [confluent에서도 권장하는 방법이다.](https://docs.confluent.io/platform/current/connect/security.html#fileconfigprovider) 
 
@@ -239,4 +240,3 @@ https://docs.confluent.io/platform/current/connect/transforms/overview.html
 https://discuss.elastic.co/t/version-conflict-409-question/311335
 
 https://discuss.elastic.co/t/version-conflict-issue-while-updating-data-continously/344065
-
