@@ -53,7 +53,8 @@ tar -xf opensearch-connector-for-apache-kafka-3.0.0.tar
 
 configuration의 정보는 [confluent es sink connector configuration 공식 문서](https://docs.confluent.io/kafka-connectors/elasticsearch/current/configuration_options.html)와 open search sink connector를 제공한 [aiven의 공식 문서](https://github.com/Aiven-Open/opensearch-connector-for-apache-kafka/blob/main/docs/opensearch-sink-connector-config-options.rst)를 참고했다. 
 
-위의 body 내용은 'test-topic' 이라는 토픽에서 컨슘하여 open search에 인덱싱하는 커넥터를 등록한 것이다. open search sink connector는 topic명 그대로 index 명으로 생성이 된다. 따라서 이것을 원하지 않는다면 alias를 이용하자.  
+위의 body 내용은 'test-topic' 이라는 토픽에서 컨슘하여 open search에 인덱싱하는 커넥터를 등록한 것이다.  
+~~open search sink connector는 topic명 그대로 index 명으로 생성이 된다. 따라서 이것을 원하지 않는다면 alias를 이용하자.~~ -> 아래의 인덱스 명 변경하기에서 다른 방법을 적어둠.
 
 username과 password 같은 값 들은 하드코딩해서 그대로 입력하면 안된다. 왜냐하면 해당 커넥터의 config 조회를 하면 그대로 들어나기 때문이다. 따라서 properties 파일 안에 넣어두고 그것을 읽어오는 방식을 취해야 한다. [confluent에서도 권장하는 방법이다.](https://docs.confluent.io/platform/current/connect/security.html#fileconfigprovider) 
 
@@ -186,6 +187,22 @@ condition에는 jsonPath 형식으로 들어가게 된다. jsonPath의 filter op
 여러 transforms를 한 번에 사용할 때에는 그냥 위와 같이 transforms안에 여러개를 정의해두면 된다.  
 동작하는 순서는 정의한 순서대로 동작한다. 
 따라서 만약 특정 필드를 exclude 시켰거나 필드의 이름을 변경시켰는데 그 다음 transforms 단계에서 해당 필드를 이용하려고 한다면 오류가 발생할 수도 있다.  
+
+### 인덱스 명 변경하기
+
+```yaml
+{  
+    "transforms": "InsertField, SetTopic",
+    "transforms.InsertField.type": "org.apache.kafka.connect.transforms.InsertField$Value",
+    "transforms.InsertField.static.field": "indexName",
+    "transforms.InsertField.static.value": "my-index",
+    "transforms.SetTopic.type": "io.confluent.connect.transforms.ExtractTopic$Value",
+    "transforms.SetTopic.field": "indexName"
+}
+```
+
+aiven opensearch sink conneector는 타겟이 되는 토픽 명으로 인덱스를 그대로 생성하게 되는데, ExtractTopic을 이용해서 필드 value를 인덱스명으로 둘 수 있다.  
+필드가 계속 바뀌면 새로운 인덱스가 계속해서 생성이 될 것이기 때문에 InsertField를 이용해서 필드명과 필드 value를 세팅해두고 이후에 ExtractTopic을 이용함으로써 인덱스명 변경을 할 수가 있다.
 
 <br/>
 
