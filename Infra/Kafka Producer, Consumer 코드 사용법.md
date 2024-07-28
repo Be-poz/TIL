@@ -285,3 +285,52 @@ public class KafkaStudyApplication implements CommandLineRunner {
 
 서버는 yaml에 기입해주었고, 기본 템플릿을 주입받아 사용하였다. ``send`` 메서드는 오버로드된 여러 시그니처들이 있다. 위의 코드에서는 토픽 명과 데이터만 넣었지만, 키, 파티션, 타임스탬프를 받을 수 있게끔 되어있고, ``ProducerRecord``를 받는 메서드도 있다.  
 
+<Br/>
+
+```java
+@Configuration
+public class CustomKafkaTemplateConfiguration {
+
+    private final static String BOOTSTRAP_SERVERS =
+            "";
+    @Bean
+    public KafkaTemplate<String, String> customKafkaTemplate() {
+        final Map<String, Object> props = new HashMap<>();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+
+        final DefaultKafkaProducerFactory<String, String> factory = new DefaultKafkaProducerFactory<>(props);
+        return new KafkaTemplate<>(factory);
+    }
+}
+
+---
+  
+@Autowired
+private KafkaTemplate<String, String> customKafkaTemplate;
+
+public static void main(String[] args) {
+    SpringApplication.run(KafkaStudyApplication.class, args);
+}
+
+@Override
+public void run(String... args) throws Exception {
+    customKafkaTemplate.send(TOPIC_NAME, "Hello, World!!!").handle((result, ex) -> {
+        if (ex != null) {
+            System.out.println("Failed to send message: " + ex);
+        } else {
+            System.out.println("Sent message: " + result);
+        }
+        return result;
+    });
+}
+```
+
+한 어플리케이션 내에서 프로듀서를 여러개 사용하고 싶을 때 커스텀한 카프카템플릿을 사용하면 된다.  
+위와 같이 팩토리 클래스를 이용해 템플릿을 만들고 빈 등록을 해주었다. 그리고 해당 템플릿을 주입받아 사용하였다.  handle 메서드를 이용하여 성공, 실패에 대한 콜백을 지정하였다. 저 상태로 코드를 돌리면 전송하기 전에 어플리케이션이 종료가 되어 원활하게 토픽에 데이터가 안들어갈 수도 있으므로 테스트 용이니 뒤에 ``Thread.sleep()``이나 여타 다른 시간을 버는 코드를 추가하면 된다.  
+
+<br/>
+
+## Spring Kafka를 이용한 컨슈머
+
