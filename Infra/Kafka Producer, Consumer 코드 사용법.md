@@ -334,3 +334,76 @@ public void run(String... args) throws Exception {
 
 ## Spring Kafka를 이용한 컨슈머
 
+스프링 카프카의 컨슈머는 기본 컨슈머를 2개의 타입으로 나누고 커밋을 7가지로 나누어 세분화되어있다.  
+타입은 레코드 리스너(MessageListener)(SINGLE 이라고 말하기도 함)와 배치 리스너(BatchMessageListener)가 있다. 전자는 단 1개의 레코드를 처리하고, 후자는 ``poll()`` 메서드로 리턴받은 ``ComsumerRecords`` 처럼 한 번에 여러 개 레코드들을 처리할 수 있다.  
+
+스프링 카프카에서는 사용자가 사용할 만한 커밋의 종류를 7가지로 세분화해놨고 커밋이라고 부르지 않고 'AckMode'라고 부른다. 프로듀서에서 사용하는 acks 옵션과는 다르다.  
+
+| AcksMode         | 설명                                                         |
+| ---------------- | ------------------------------------------------------------ |
+| RECORD           | 레코드 단위로 프로세싱 이후 커밋                             |
+| BATCH            | poll()메서드로 호출된 레코드가 모두 처리된 이후 커밋, default |
+| TIME             | 특정 시간 이후 커밋, 시간 간격을 선언하는 AckTime 옵션 설정 필요 |
+| COUNT            | 특정 개수만큼 처리된 이후에 커밋, 레코드 개수를 선언하는 AckCount 옵션 설정 필요 |
+| COUNT_TIME       | TIME, COUNT 옵션 중 맞는 조건이 하나라도 나올 경우 커밋      |
+| MANUAL           | acknowledge() 메서드가 호출되면 다음번 poll() 때 커밋을 한다. 매번 acknowledge() 메서드를 호출하면 BATCH 옵션과 동일하게 동작한다. 이 옵션을 사용할 경우에는 AcknowledgingMessageListener 또는 BatchAcknowledgingMessageListener를 리스너로 사용해야 한다. |
+| MANUAL_IMMEDIATE | acknowledge() 메서드를 호출한 즉시 커밋한다. 이 옵션을 사용할 경우에는 AcknowledgingMessageListener 또는 BatchAcknowledgingMessageListener를 리스너로 사용해야 한다. |
+
+```java
+@KafkaListener(topics = TOPIC_NAME, groupId = "ksy-test")
+public void recordListener(ConsumerRecord<String, String> record) {
+    System.out.println("Received message: " + record);
+}
+```
+
+기본적으로 위와 같이 사용하면 된다(String message 이렇게도 사용하려면 가능하긴 함). ``KafkaListener`` 어노테이션은 위의 사용법 이외에도 property 값을 따로 지정해주거나, 병렬 처리, 특정 토픽의 파티션만 읽게끔 하는 등의 설정을 할 수 있다. [KafkaListener annotaion docs](https://docs.spring.io/spring-kafka/reference/kafka/receiving-messages/listener-annotation.html) 에서 확인해보자.  
+SINGLE의 경우 Listener 타입 Default이기 때문에 따로 지정해줄 필요가 없다.  
+
+```java
+spring.kafka.listener.type: BATCH
+
+----------------------------------------------------------------------------
+
+@KafkaListener(topics = TOPIC_NAME, groupId = "ksy-test9")
+public void batchListener(ConsumerRecords<String, String> records) {
+    for (ConsumerRecord<String, String> record : records) {
+        System.out.println("record = " + record);
+    }
+}
+```
+
+리스너의 타입을 ``BATCH``로 설정하고 여러 레코드들을 한 번에 가져올 수도 있다.  
+
+수동 커밋을 사용하고 싶다면 ``BatchAcknowledgingMessageListener``,  ``BatchConsumerAwareMessageListener`` 를 사용하면 된다. 이 때, ``AckMode``는 ``MANUAL``, ``MANUAL_IMMEDIATE``로 설정하면된다.  
+
+<br/>
+
+```java
+@Bean
+public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<String, String>> customContainerFactory() {
+    final Map<String, Object> props = new HashMap<>();
+    props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+    props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+    props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+    props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+    final DefaultKafkaConsumerFactory<String, String> cf = new DefaultKafkaConsumerFactory<>(props);
+    final ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
+    factory.setConsumerFactory(cf);
+    factory.setBatchListener(true);
+    return factory;
+}
+
+
+-------------------------------------------------------------------------
+  
+@KafkaListener(topics = TOPIC_NAME, groupId = "custom-listener", containerFactory = "customContainerFactory")
+public void customListener(ConsumerRecords<String, String> records) {
+    for (ConsumerRecord<String, String> record : records) {
+        System.out.println("custom listener's record = " + record);
+    }
+}
+```
+
+한 어플리케이션 내에서 여러개의 리스너를 사용해야 하는 상황이고 설정이 각기 다르다면 커스텀한 리스너 컨테이너를 사용하면 된다. 어노테이션에 위의 코드와 같이 커스텀하게 만들어준 팩토리를 지정해주면 된다. yml 파일에 ``auto.offset.reset`` 설정을 하지 않았다면 default가 ``latest`` 이기 때문에 팩토리 설정을 안해준 리스너로는 ``latest``로 동작을 하겠지만 커스텀하게 만들어준 곳에는 ``earliest``로 박아두었기 때문에 토픽에서 모든 레코드들을 읽어오는 방식으로 동작하게 된다.  
+
