@@ -330,6 +330,8 @@ public void run(String... args) throws Exception {
 한 어플리케이션 내에서 프로듀서를 여러개 사용하고 싶을 때 커스텀한 카프카템플릿을 사용하면 된다.  
 위와 같이 팩토리 클래스를 이용해 템플릿을 만들고 빈 등록을 해주었다. 그리고 해당 템플릿을 주입받아 사용하였다.  handle 메서드를 이용하여 성공, 실패에 대한 콜백을 지정하였다. 저 상태로 코드를 돌리면 전송하기 전에 어플리케이션이 종료가 되어 원활하게 토픽에 데이터가 안들어갈 수도 있으므로 테스트 용이니 뒤에 ``Thread.sleep()``이나 여타 다른 시간을 버는 코드를 추가하면 된다.  
 
+스프링이 기본적으로 제공해주는 ``KafkaTemplate``은 yml 파일의 기본 설정을 따른다. 만약 이것도 설정되어 있지 않다면 진짜 default 값을 따른다. 위에서는 프로듀서를 여러개 사용하고 싶을 때라고 했지만 사실 세밀한 설정을 하고 싶으면 그냥 사용하면 된다. 
+
 <br/>
 
 ## Spring Kafka를 이용한 컨슈머
@@ -406,4 +408,15 @@ public void customListener(ConsumerRecords<String, String> records) {
 ```
 
 한 어플리케이션 내에서 여러개의 리스너를 사용해야 하는 상황이고 설정이 각기 다르다면 커스텀한 리스너 컨테이너를 사용하면 된다. 어노테이션에 위의 코드와 같이 커스텀하게 만들어준 팩토리를 지정해주면 된다. yml 파일에 ``auto.offset.reset`` 설정을 하지 않았다면 default가 ``latest`` 이기 때문에 팩토리 설정을 안해준 리스너로는 ``latest``로 동작을 하겠지만 커스텀하게 만들어준 곳에는 ``earliest``로 박아두었기 때문에 토픽에서 모든 레코드들을 읽어오는 방식으로 동작하게 된다.  
+
+``factory.setBatchListener(true);`` 이 구문 때문에 listener의  타입이 BATCH가 되어서 배치로 읽어오게 된다.  
+
+```java
+@KafkaListener(topics = TOPIC_NAME, groupId = "original3", properties = "auto.offset.reset=earliest")
+public void batchListener(ConsumerRecord<String, String> record) {
+    System.out.println(record);
+}
+```
+
+만약 위와 같이 따로  containerFactory를 사용하지 않은 상황에서  yml에 ``spring.kafka.listener.type: SINGLE``로 해두었다면 단건으로 읽어오게 될 것이다. 유의해야 할 점은 파라미터로  ``ConsumerRecords``로 두면 오류가 난다는 것이다. 배치로 읽어들이는 것이 아니기 때문! ``ConsumerRecord``로 두어야 한다.  
 
