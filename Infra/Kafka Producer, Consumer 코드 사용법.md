@@ -283,7 +283,7 @@ public class KafkaStudyApplication implements CommandLineRunner {
 }
 ```
 
-서버는 yaml에 기입해주었고, 기본 템플릿을 주입받아 사용하였다. ``send`` 메서드는 오버로드된 여러 시그니처들이 있다. 위의 코드에서는 토픽 명과 데이터만 넣었지만, 키, 파티션, 타임스탬프를 받을 수 있게끔 되어있고, ``ProducerRecord``를 받는 메서드도 있다.  
+서버는 yaml에 기입해주었고, 기본 템플릿을 주입받아 사용하였다. ``send`` 메서드는 오버로드된 여러 시그니처들이 있다. 위의 코드에서는 토픽 명과 데이터만 넣었지만, 키, 파티션, 타임스탬프를 받을 수 있게끔 되어있고, ``ProducerRecord``를 받는 메서드도 있다. 만약 ``Message<?>`` 파라미터가 들어간 메서드를 사용한다면 헤더의 값으로 ``KafakHeaders.TOPIC``,``KafkaHeaders.PARTITION``와 같은 값을 사용하면 된다.    
 
 <Br/>
 
@@ -330,7 +330,30 @@ public void run(String... args) throws Exception {
 한 어플리케이션 내에서 프로듀서를 여러개 사용하고 싶을 때 커스텀한 카프카템플릿을 사용하면 된다.  
 위와 같이 팩토리 클래스를 이용해 템플릿을 만들고 빈 등록을 해주었다. 그리고 해당 템플릿을 주입받아 사용하였다.  handle 메서드를 이용하여 성공, 실패에 대한 콜백을 지정하였다. 저 상태로 코드를 돌리면 전송하기 전에 어플리케이션이 종료가 되어 원활하게 토픽에 데이터가 안들어갈 수도 있으므로 테스트 용이니 뒤에 ``Thread.sleep()``이나 여타 다른 시간을 버는 코드를 추가하면 된다.  
 
-스프링이 기본적으로 제공해주는 ``KafkaTemplate``은 yml 파일의 기본 설정을 따른다. 만약 이것도 설정되어 있지 않다면 진짜 default 값을 따른다. 위에서는 프로듀서를 여러개 사용하고 싶을 때라고 했지만 사실 세밀한 설정을 하고 싶으면 그냥 사용하면 된다. 
+스프링이 기본적으로 제공해주는 ``KafkaTemplate``은 yml 파일의 기본 설정을 따른다. 만약 이것도 설정되어 있지 않다면 진짜 default 값을 따른다. 위에서는 프로듀서를 여러개 사용하고 싶을 때라고 했지만 사실 세밀한 설정을 하고 싶으면 그냥 사용하면 된다.  
+
+```java
+public class CustomKafkaProducerListener implements ProducerListener {
+    @Override
+    public void onSuccess(ProducerRecord producerRecord, RecordMetadata recordMetadata) {
+      ...
+    }
+
+    @Override
+    public void onError(ProducerRecord producerRecord, RecordMetadata recordMetadata, Exception exception) {
+      ...
+    }
+}
+
+----------------------------------------------------------------------
+  
+KafkaTemplate template = new KafkaTemplate<>(factory);
+template.setProducerListener(new CustomKafkaProducerListener());
+```
+
+``send().handle()``을 통해 성공/실패에 따른 비동기 처리를 할 수도 있지만 위와 같이  ``ProducerListener``를 구현하여 등록할 수도 있다. 여러 프로듀서에서 공통적으로 사용이 될 로직이면 리스너 클래스를 생성해두고 사용하는 식이 좋아 보인다. 프로듀서 개별적으로 성공/실패에 따른 처리 로직이 필요하다면 ``handle()``에서 처리하는 것이 좋아보인다.  
+
+스프링에서  ``LoggingProducerListener``라는 로깅용 리스너 클래스를 따로 지원해주기도 한다.  
 
 <br/>
 
