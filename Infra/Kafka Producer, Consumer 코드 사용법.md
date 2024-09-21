@@ -443,3 +443,22 @@ public void batchListener(ConsumerRecord<String, String> record) {
 
 만약 위와 같이 따로  containerFactory를 사용하지 않은 상황에서  yml에 ``spring.kafka.listener.type: SINGLE``로 해두었다면 단건으로 읽어오게 될 것이다. 유의해야 할 점은 파라미터로  ``ConsumerRecords``로 두면 오류가 난다는 것이다. 배치로 읽어들이는 것이 아니기 때문! ``ConsumerRecord``로 두어야 한다.  
 
+<br/>
+
+## Spring Cloud Function, Stream을 이용한 프로듀서
+
+java의 functional interface인  ``Consumer``,  ``Function``, ``Supplier``을 이용해서 kafka에서 데이터를 읽고 쓰는 것을 할 수가 있다. 정확히는 Bean 등록하여 사용하는 방식이다. 
+
+```yaml
+spring:
+  cloud:
+    stream:
+      bindings:  
+        definitionName-in-0:
+          destination: topic-name
+```
+
+설정은 위와 같이  ``spring.cloud.stream.bindings.<functionName>+in/out+<index>`` 형태를 가지고 그 하위에 다른 설정들을 작성하는 식이다.  
+
+in과 out은 말 그대로 input, output의 줄임이고, input은 읽어오는 토픽에 대한 정보를, output에는 write하는 토픽에 대한 정보를 입력하면 된다.  
+
