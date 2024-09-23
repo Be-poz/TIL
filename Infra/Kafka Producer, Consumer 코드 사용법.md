@@ -445,20 +445,68 @@ public void batchListener(ConsumerRecord<String, String> record) {
 
 <br/>
 
-## Spring Cloud Function, Stream을 이용한 프로듀서
+## Spring Cloud Function, Stream을 이용한 프로듀서와 컨슈머
 
-java의 functional interface인  ``Consumer``,  ``Function``, ``Supplier``을 이용해서 kafka에서 데이터를 읽고 쓰는 것을 할 수가 있다. 정확히는 Bean 등록하여 사용하는 방식이다. 
+``spring-kafka:3.2.1``, ``spring-cloud-stream:4.1.3``, ``spring-cloud-stream-binder-kafka:4.1.3`` 기준 작성  
+
+java의 functional interface인  ``Consumer``,  ``Function``, ``Supplier``을 이용해서 kafka에서 데이터를 읽고 쓰는 것을 할 수가 있다(spring-cloud-function). 정확히는 Bean 등록하여 사용하는 방식이다. 
 
 ```yaml
 spring:
+  application:
+    name: kafka-study
   cloud:
+    function:
+      definition: testFunction
     stream:
-      bindings:  
-        definitionName-in-0:
-          destination: topic-name
+      bindings:
+        testFunction-in-0:
+          binder: kafka
+          destination: ksyTest
+          contentType: application/json
+          group: ksy-test-group3
+          consumer:
+            batch-mode: true
+      kafka:
+        binder:
+          brokers: ""
+        bindings:
+          testFunction-in-0:
+              consumer:
+                start-offset: earliest
+                configuration:
+                  key.deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
+                  value.deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
 ```
 
 설정은 위와 같이  ``spring.cloud.stream.bindings.<functionName>+in/out+<index>`` 형태를 가지고 그 하위에 다른 설정들을 작성하는 식이다.  
 
 in과 out은 말 그대로 input, output의 줄임이고, input은 읽어오는 토픽에 대한 정보를, output에는 write하는 토픽에 대한 정보를 입력하면 된다.  
+
+``spring.cloud.stream.bindings``에 대한 설정 정보는 [해당  docs 페이지](https://docs.spring.io/spring-cloud-stream/reference/spring-cloud-stream/binding-properties.html)를 참고하자  
+
+``spring.cloud.stream.kafka.binder`` 하위의 정보는 [해당  docs 페이지](https://docs.spring.io/spring-cloud-stream/reference/kafka/kafka-binder/config-options.html)를 참고하자  
+``spring.cloud.stream.kafka.binder.consumer/producer`` 하위에 여러 옵션이 있는데  configuration 옵션도 있다. 이곳에 그냥 직접적으로 설정 값을 입력할 수도 있다. 위의 yaml에서는 ``key.deserializer``와 ``value.deserializer``를 따로 설정해두었다.   
+
+``spring.cloud.stream.kafka.binder`` 하위의 정보는 [해당  docs 페이지](https://docs.spring.io/spring-cloud-stream/reference/kafka/kafka-binder/config-options.html)를 참고하자  
+``spring.cloud.stream.kafka.binder.consumer/producer`` 하위에 여러 옵션이 있는데  configuration 옵션도 있다. 이곳에 그냥 직접적으로 설정 값을 입력할 수도 있다. 위의 yaml에서는 ``key.deserializer``와 ``value.deserializer``를 따로 설정해두었다.   
+
+spring-kafka를 사용할 때에 default deserializer가 StringDeserializer이지만, kafka binder를 사용할 때에는 내부적으로 kafka-client를 사용하기 때문에([ref](https://docs.spring.io/spring-cloud-stream/reference/kafka/kafka-binder/overview.html)) default로 ByteArrayDeserializer를 사용하기 때문에 사실 설정할 필요가 없긴하다.  
+
+docs에 나와있는 것 처럼  여러 binding이 있어 한 번에 설정하기 위해 default 값을 설정하고 싶다면 ``spring.cloud.stream.kafka.default.consumer.<property>=<value>`.`` 이런 식으로 둘 수도 있지만,  
+spring-kakfa를 이용할 때 처럼 ``spring.kafka.consumer`` 하위에 두어도 설정은 된다.  
+어찌되었던 간에 ``org.apache.kafka.clients.consumer.ConsumerConfig`` 이쪽으로 설정 값 들이 들어가고 이것으로 연결을 맺기 때문으로 보인다.  
+
+```java
+  @Bean
+  public Consumer<List<String>> testFunction() {
+      return messages -> {
+          for (String message : messages) {
+              System.out.println("message = " + message);
+          }
+      };
+  }
+```
+
+코드 자체는 위와 같이 함수명을 yaml에 선언했던 definition과 일치시키면 된다.  
 
