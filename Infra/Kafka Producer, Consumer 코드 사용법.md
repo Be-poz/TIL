@@ -443,6 +443,37 @@ public void batchListener(ConsumerRecord<String, String> record) {
 
 만약 위와 같이 따로  containerFactory를 사용하지 않은 상황에서  yml에 ``spring.kafka.listener.type: SINGLE``로 해두었다면 단건으로 읽어오게 될 것이다. 유의해야 할 점은 파라미터로  ``ConsumerRecords``로 두면 오류가 난다는 것이다. 배치로 읽어들이는 것이 아니기 때문! ``ConsumerRecord``로 두어야 한다.  
 
+``@KafkaListener``을 사용하는 메서드에  ``@SentTo``를 사용해서 다른 토픽에 바로 프로듀싱을 할 수도 있다.  
+
+```java
+@Bean
+public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<String, String>> customContainerFactory() {
+    final Map<String, Object> props = new HashMap<>();
+    props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+    props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+    props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+    props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+    final DefaultKafkaConsumerFactory<String, String> cf = new DefaultKafkaConsumerFactory<>(props);
+    final ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
+    factory.setConsumerFactory(cf);
+    factory.setReplyTemplate(customKafkaTemplate());
+    return factory;
+}
+
+---
+  
+@KafkaListener(topics = TOPIC_NAME, groupId = "sentToGroup", containerFactory = "customContainerFactory")
+@SendTo("ksyTest-out")
+public String sendToListener(ConsumerRecord<String, String> record) {
+    System.out.println(record);
+    return record.value();
+}
+```
+
+위와 같이 factory의 `` setReplyTemplate``을 이용해서 reply 하기위한(토픽에 넣어주기 위한) 템플릿을 set 해주기만 하면된다.  
+``KafkaTemplate``을 상속받은  ``ReplyingKafkaTemplate``을 선언해서 set 해주어도 된다.  
+
 <br/>
 
 ## Spring Cloud Function, Stream을 이용한 프로듀서와 컨슈머
@@ -540,4 +571,3 @@ https://docs.spring.io/spring-cloud-stream/reference/index.html
 https://docs.spring.io/spring-cloud-function/reference/spring-cloud-function/introduction.html
 
 책 아파치 카프카  by 최원영
-
