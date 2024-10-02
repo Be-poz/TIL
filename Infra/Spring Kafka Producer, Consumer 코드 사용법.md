@@ -1,4 +1,4 @@
-# Kafka Producer, Consumer 코드 사용법
+# Spring Kafka Producer, Consumer 코드 사용법
 
 ## Kafka Client를 이용한 프로듀서
 
