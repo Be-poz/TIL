@@ -55,15 +55,48 @@ public CommonErrorHandler customErrorHandler() {
 
 ## Spring Cloud Stream을 사용하는 경우
 
+```java
+@Bean
+public ListenerContainerCustomizer<AbstractMessageListenerContainer<byte[], byte[]>> customizer() {
+    return (container, dest, group) -> {
+        container.setCommonErrorHandler(customErrorHandler());
+    };
+}
+
+@Bean
+public CommonErrorHandler customErrorHandler() {
+    return new DefaultErrorHandler((rec, ex) -> {
+        log.error("Error!!!");
+    }, new FixedBackOff(1000, 2));
+}
+```
+
+Spring cloud stream을 사용하는 경우 기본적으로 위와 같이 ``ListenerContainerCustomizer``를 이용하여 ``CommonErrorHandler``를 등록해줄 수가 있다. [Customizer docs](https://docs.spring.io/spring-cloud-stream/docs/current/reference/html/spring-cloud-stream.html#_advanced_consumer_configuration)  
+
+dlq에 넣고 싶다면 위에서 한 번 다뤘던 ``DeadLetterPublishingRecoverer``을 이용한 Error handler를 정의하면 된다.  
+
 ```yaml
 spring:
   cloud:
     stream:
-      bindings:
-        consumer:
-          enable-dlq: true
-          dlq-name: {dlqTopicName}
+      kafka:
+        bindings:
+          consumer:
+            enable-dlq: true
+            dlq-name: {dlqTopicName}
 ```
 
-spring cloud stream을 사용하는 경우 dlq 사용 및 토픽명 등록을 위의 yaml에 작성하는 것으로 할 수 있다.  
+단순히 dlq에만 전송하고 싶고 크게 커스터마이징 할 일이 없다면 단순히 위와 같이 yaml 설정을 통해 dlq 사용 및 토픽명 등록을 할 수도 있다.  
+
+``@StreamRetryTemplate``을 이용하는 방법도 있는데 이것은 생략하겠다.  
+
+---
+
+## REFERENCE
+
+https://docs.spring.io/spring-cloud-stream/reference/kafka/kafka_tips.html#simple-dlq-with-kafka
+
+https://docs.spring.io/spring-cloud-stream/docs/current/reference/html/spring-cloud-stream.html#_advanced_consumer_configuration
+
+https://docs.spring.io/spring-cloud-stream/reference/spring-cloud-stream/overview-error-handling.html
 
