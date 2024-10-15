@@ -72,6 +72,7 @@ public CommonErrorHandler customErrorHandler() {
 ```
 
 Spring cloud stream을 사용하는 경우 기본적으로 위와 같이 ``ListenerContainerCustomizer``를 이용하여 ``CommonErrorHandler``를 등록해줄 수가 있다. [Customizer docs](https://docs.spring.io/spring-cloud-stream/docs/current/reference/html/spring-cloud-stream.html#_advanced_consumer_configuration)  
+굳이 customizer를 사용하고 싶지 않다면, ``spring.cloud.stream.kafka.bindings.consumer.{channelName}.consumer.common-error-handler-bean-name``에 설정해주면 된다. [Kafka Consumer Properties docs](https://docs.spring.io/spring-cloud-stream/reference/kafka/kafka-binder/config-options.html#kafka-consumer-properties)
 
 dlq에 넣고 싶다면 위에서 한 번 다뤘던 ``DeadLetterPublishingRecoverer``을 이용한 Error handler를 정의하면 된다.  
 
