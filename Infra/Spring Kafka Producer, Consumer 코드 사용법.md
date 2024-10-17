@@ -483,45 +483,42 @@ public String sendToListener(ConsumerRecord<String, String> record) {
 java의 functional interface인  ``Consumer``,  ``Function``, ``Supplier``을 이용해서 kafka에서 데이터를 읽고 쓰는 것을 할 수가 있다(spring-cloud-function). 정확히는 Bean 등록하여 사용하는 방식이다. 
 
 ```yaml
-spring:
-  application:
-    name: kafka-study
-  cloud:
-    function:
-      definition: testConsumer;testFunction
-    stream:
-      bindings:
-        default:
-          binder: kafka
-          contentType: application/json
-        testConsumer-in-0:
-          binder: kafka
-          destination: ksyTest
-          contentType: application/json
-          group: ksy-test-group3
-          consumer:
-            batch-mode: true
-        testFunction-in-0:
-          destination: ksyTest
-          group: ksy-test-function
-          consumer:
-              batch-mode: true
-        testFunction-out-0:
-          destination: ksyTest-out
+spring.application.name: kafka-study
+spring.cloud.function.definition: testConsumer;testFunction
 
-      kafka:
-        binder:
-          brokers: ""
-        bindings:
-          testConsumer-in-0:
-              consumer:
-                start-offset: earliest
-                configuration:
-                  key.deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
-                  value.deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
-          testFunction-in-0:
-            consumer:
-              start-offset: earliest
+spring.cloud.stream:
+  default: 
+    binder: kafka
+    contentType: application/json
+  bindings:
+    testConsumer-in-0:
+      binder: kafka
+      destination: ksyTest
+      contentType: application/json
+      group: ksy-test-group3
+      consumer:
+        batch-mode: true
+    testFunction-in-0:
+      destination: ksyTest
+      group: ksy-test-function
+      consumer:
+          batch-mode: true
+    testFunction-out-0:
+      destination: ksyTest-out
+      
+spring.cloud.stream.kafka:
+  binder:
+    brokers: ""
+  bindings:
+    testConsumer-in-0:
+        consumer:
+          start-offset: earliest
+          configuration:
+            key.deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
+            value.deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
+    testFunction-in-0:
+      consumer:
+        start-offset: earliest
 ```
 
 설정은 위와 같이  ``spring.cloud.stream.bindings.<functionName>+in/out+<index>`` 형태를 가지고 그 하위에 다른 설정들을 작성하는 식이다.  
@@ -571,3 +568,4 @@ https://docs.spring.io/spring-cloud-stream/reference/index.html
 https://docs.spring.io/spring-cloud-function/reference/spring-cloud-function/introduction.html
 
 책 아파치 카프카  by 최원영
+
