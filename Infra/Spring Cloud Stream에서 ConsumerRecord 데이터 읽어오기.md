@@ -151,7 +151,7 @@ batch-mode를 사용하기 전과 다르게 사용을 한다면 위의 코드를
    ```
 
    이 상태로 수행하게 되면 아래와 같이 등록된 컨버터의 목록에 생성해준 메세지 컨버터가 보이게 된다.  
-   ![image-20241020223127561](/Users/user/Library/Application Support/typora-user-images/image-20241020223127561.png)
+   <img width="572" alt="image" src="https://github.com/user-attachments/assets/5cfdfde4-4eef-4204-925b-e0e72af70aa3">
 
    위의 코드로 진행을 하게되면 ``convertFromInternal``에서 따로 내부적으로 json 변환이라던지 그런 단계가 없기 때문에 ``ConsumerRecord``의 value를 확인해보면 ``NameDto``가 아닌 읽어들인 그대로가 있는 것을 확인할 수 있다. 만약 value.deserializer가 StringDeserializer라면 jsonString 형태 그대로 찍힐 것이고, ByteArrayDeserializer 라면 바이트 배열이 찍히게 될 것이다. 일단 이렇게 받은 다음에 컨슈머 코드 내부에서 dto로 변환하는 로직을 추가하는 방향으로 진행하면 된다.
 
