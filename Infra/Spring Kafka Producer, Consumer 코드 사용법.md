@@ -527,7 +527,7 @@ in과 out은 말 그대로 input, output의 줄임이고, input은 읽어오는 
 
 ``spring.cloud.stream.bindings``에 대한 설정 정보는 [해당  docs 페이지](https://docs.spring.io/spring-cloud-stream/reference/spring-cloud-stream/binding-properties.html)를 참고하자  
 ``spring.cloud.stream.kafka.binder`` 하위의 정보는 [해당  docs 페이지](https://docs.spring.io/spring-cloud-stream/reference/kafka/kafka-binder/config-options.html)를 참고하자  
-``spring.cloud.stream.kafka.binder.consumer/producer`` 하위에 여러 옵션이 있는데  configuration 옵션도 있다. 이곳에 그냥 직접적으로 설정 값을 입력할 수도 있다. 위의 yaml에서는 ``key.deserializer``와 ``value.deserializer``를 따로 설정해두었다.   
+``spring.cloud.stream.kafka.binding.<channelName>.consumer/producer`` 하위에 여러 옵션이 있는데  configuration 옵션도 있다. 이곳에 그냥 직접적으로 설정 값을 입력할 수도 있다. 위의 yaml에서는 ``key.deserializer``와 ``value.deserializer``를 따로 설정해두었다.   
 
 spring-kafka를 사용할 때에 default deserializer가 StringDeserializer이지만, kafka binder를 사용할 때에는 내부적으로 kafka-client를 사용하기 때문에([ref](https://docs.spring.io/spring-cloud-stream/reference/kafka/kafka-binder/overview.html)) default로 ByteArrayDeserializer를 사용하기 때문에 사실 설정할 필요가 없긴하다.  
 
