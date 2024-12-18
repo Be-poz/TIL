@@ -40,7 +40,7 @@ batch-mode가 true일 때에는 조금 달라진다.
         };
     }
 
-		@Bean
+    @Bean
     BatchMessageConverter customBatchMessageConverter() {
         return new CustomBatchMessageConverter();
     }
