@@ -10,7 +10,7 @@ val supplyAsync = CompletableFuture.supplyAsync {
     println(sentence)
     sentence
 }
-val result = supplyAsync.join()
+val result = supplyAsync.join() // "supplyAsync!"
 ```
 
 비동기로 처리하고 결과값을 반환함
@@ -53,11 +53,103 @@ println(result)
 
 ### thenApply(Function<T, U>)
 
+```kotlin
+val random = Random.nextInt(3)
+
+CompletableFuture.supplyAsync {
+    "supplyAsync!"
+}.thenApply { passedValue ->								// "supplyAsync!"
+    Thread.sleep(random.toLong() * 1000)
+    println("${Thread.currentThread()}-$i have slept for $random second(s).")
+    "thenApply!"
+}
+
+val result = supplyAsync.join() // "thenApply!"
+```
+
+``Function<T, U>``가 들어가는 것 처럼 값을 받아서 값을 반환한다. 동기로 동작한다. 즉, supplyAsync에서 사용한 쓰레드를 그대로 사용한다.
+
 ### thenApplyAsync(Function<T, U>)
+
+```kotlin
+val random = Random.nextInt(3)
+
+CompletableFuture.supplyAsync {
+    "supplyAsync!"
+}.thenApplyAsync { passedValue ->						// "supplyAsync!"
+    Thread.sleep(random.toLong() * 1000)
+    println("${Thread.currentThread()}-$i have slept for $random second(s).")
+    "thenApplyAsync!"
+}
+val result = supplyAsync.join() // "thenApplyAsync!"
+```
+
+``Function<T, U>``가 들어가는 것 처럼 값을 받아서 값을 반환한다. 비동기로 동작한다. 즉, supplyAsync에서 사용한 쓰레드가 아닐 수도 있다.  
+따로 Executors를 명시하지 않으면 supplyAsync가 사용했던 것과 동일한 ForkJoinPool을 사용할 수가 있다. 만약 원치 않는다면 2번째 인자로 executors를 선언해주면 된다.  
+
+thenApply와 굉장히 헷갈리고 언제 이걸 사용하지 싶을 수 있는데 [이 링크](https://blog.krecan.net/2013/12/25/completablefutures-why-to-use-async-methods/)를 참고하여 감을 잡도록 하자.
 
 ### thenAccept(Consumer<T>)
 
+```kotlin
+CompletableFuture.supplyAsync {
+    10
+}.thenApplyAsync { value ->
+    value * 10
+}.thenAccept { value ->
+    println(value)				// 100
+}
+```
+
+값을 받아 사용하고 반환하는게 없다. 동기로 동작한다.
+
 ### thenAcceptAsync(Consumer<T>)
 
+```kotlin
+CompletableFuture.supplyAsync {
+    10
+}.thenApplyAsync { value ->
+    value * 10
+}.thenAcceptAsync { value ->
+    println(value)
+}
+```
+
+값을 받아 사용하고 반환하는게 없다. 비동기로 동작한다.
+
 ### thenRun(Runnable)
+
+```kotlin
+CompletableFuture.supplyAsync {
+    10
+}.thenApplyAsync { value ->
+    value * 10
+}.thenRun {
+    println("I don't care your return value!!!")
+}
+```
+
+값을 받아 사용하지 않고 그냥 실행한다. 
+
+<br/>
+
+## 결과 결합
+
+### thenCompose(Function<T, CompletableFuture<U>>)
+
+### thenCombine(CompletableFuture<U>, BiFunction<T, U, R>)
+
+### allOf(CompletableFuture<?>...)
+
+### anyOf(CompletableFuture<?>...)
+
+<br/>
+
+---
+
+### REFERENCE
+
+https://blog.krecan.net/2013/12/25/completablefutures-why-to-use-async-methods/
+
+https://stackoverflow.com/questions/47489338/what-is-the-difference-between-thenapply-and-thenapplyasync-of-java-completablef
 
