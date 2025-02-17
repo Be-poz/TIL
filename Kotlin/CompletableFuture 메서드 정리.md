@@ -246,11 +246,89 @@ varargs로 넣은 future 중 하나라도 완료되면 즉시 완료된다.
 
 ### exceptionally(Function<Throwable, T>)
 
+```kotlin
+val future = CompletableFuture.supplyAsync {
+    throw RuntimeException("something went wrong")
+    "Result"
+}.exceptionally { ex ->
+    println(ex.message)
+    "default"
+}
+
+println(future.join()) // default
+```
+
+예외 발생 시 기본값을 제공할 수 있다. 400, 500번대 status code 들은 예외가 아니다.  
+
 ### handle(BiFunction<T, Throwable, U>)
+
+```kotlin
+val future = CompletableFuture.supplyAsync {
+    //throw RuntimeException("something went wrong")
+    "Result"
+}.handle { result, ex ->
+    if (ex != null) {
+        "Recovered from error: ${ex.message}"
+    } else {
+        result + "1"
+    }
+}
+
+println(future.join())   // Result1
+```
+
+정상 케이스와 예외 케이스 모두 처리가능하다. 
 
 ### whenComplete(BiConsumer<T, Throwable>)
 
+```kotlin
+val future = CompletableFuture.supplyAsync {
+//        throw RuntimeException("something went wrong")
+    "Result"
+}.whenComplete { result, ex ->
+    if (ex != null) {
+        "Recovered from error: ${ex.message}"
+    } else {
+        result + "1"
+    }
+}
+
+println(future.join()) // Result
+```
+
+정상 케이스와 예외 케이스 모두 처리 가능하지만 ``BiConsumer`` 이기 때문에 값 변경 없이 그대로 반환한다.
+
 ### exceptionallyCompose(Function<Throwable, CompletableFuture<T>>)
+
+```kotlin
+val future = CompletableFuture.supplyAsync {
+    throw RuntimeException("something went wrong")
+    "Result"
+}.exceptionallyCompose { ex ->
+    println("Handling exception: $ex.message")
+    CompletableFuture.supplyAsync { "Recovered from error" }
+}
+
+println(future.join())
+```
+
+예외가 발생했을 때 다른 CompletableFuture을 호출한다. 예외 발생 시 ``thenCompose``를 사용한다고 생각하면 된다.  
+
+<br/>
+
+## 완료 및 마무리
+
+### join()
+
+### get()
+
+### getNow(T)
+
+### complete(T)
+
+### completeExceptionally(Throwable)
+
+
 
 ---
 
