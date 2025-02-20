@@ -372,6 +372,8 @@ future을 강제 예외를 던져 종료시킨다. ``complete`` 때와 마찬가
 
 ### REFERENCE
 
+https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/CompletableFuture.html
+
 https://blog.krecan.net/2013/12/25/completablefutures-why-to-use-async-methods/
 
 https://stackoverflow.com/questions/47489338/what-is-the-difference-between-thenapply-and-thenapplyasync-of-java-completablef
