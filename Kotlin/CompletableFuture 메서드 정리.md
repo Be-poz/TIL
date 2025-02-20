@@ -320,15 +320,53 @@ println(future.join())
 
 ### join()
 
+완료될 때 까지 대기한다. unchecked exception을 던진다.
+
 ### get()
+
+완료될 때 까지 대기한다. checked exception을 던져서 처리해줘야하지만 kotlin에서는 이걸 강제하지 않기 때문에 신경을 덜 써도 된다. 하지만 그러다가 런타임에 발생할 수도 있다.
 
 ### getNow(T)
 
+```kotlin
+val future = CompletableFuture.supplyAsync {
+    Thread.sleep(2000L)
+    "Result"
+}
+val result = future.getNow("right now")
+println(result)
+```
+
+즉시 값을 가져오나 완료되지 않았으면 지정한 기본 값을 반환한다.
+
 ### complete(T)
+
+```kotlin
+val future = CompletableFuture.supplyAsync {
+//        Thread.sleep(100)
+    "Result"
+}
+Thread.sleep(100)
+future.complete("right now")
+println(future.join())
+```
+
+해당 future을 즉시 완료시키고 값을 정해준다, 하지만 그 전에 이미 future가 완료되었다면 완료된 값을 반환한다.  
+위의 경우 ``complete`` 호출 전에 완료가 되어 ``Result``를 반환한다.
 
 ### completeExceptionally(Throwable)
 
+```kotlin
+val future = CompletableFuture.supplyAsync {
+//        Thread.sleep(100)
+    "Result"
+}
+Thread.sleep(100)
+future.completeExceptionally(RuntimeException())
+println(future.join())
+```
 
+future을 강제 예외를 던져 종료시킨다. ``complete`` 때와 마찬가지로 그 전에 future가 완료되면 완료된 값을 받아온다.  
 
 ---
 
