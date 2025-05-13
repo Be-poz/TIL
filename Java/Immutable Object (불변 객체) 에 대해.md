@@ -134,7 +134,7 @@ public class ListObj{
     }
     
     public List<Animal> getAnimals(){
-        return Collections.unmodifiableLIst(animals);
+        return Collections.unmodifiableList(animals);
     }
 }
 ```
