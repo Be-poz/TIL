@@ -80,5 +80,7 @@ fun sendDataRecordWithAnnotation(@PathVariable isFailed: Boolean): String {
 ``KafkaTemplate``이 제공하는 ``executeInTransaction`` 메서드를 사용하거나 단순 ``@Transactional`` 어노테이션을 사용하면 된다.  
 조금 더 상세히 트랜잭션을 다루고 싶다면 ``KafkaTransactionManager``을 이용하면 된다.  
 
+<br/>
+
 ---
 
